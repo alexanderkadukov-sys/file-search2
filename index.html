@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Найти файл по ссылке — доступ по паролю</title>
+
+<style>
+  .fs-wrap{max-width:900px;margin:0 auto;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial}
+  .fs-card{background:#f6f7f9;border:1px solid #e5e7eb;border-radius:16px;padding:18px}
+  .fs-cta{display:flex;gap:10px;margin:12px 0 14px;flex-wrap:wrap}
+  .fs-btn-cta{background:#16a34a;color:#fff;border-radius:12px;padding:12px 16px;text-decoration:none;font-weight:700}
+  .fs-btn-wa{background:#22c55e;color:#fff;border-radius:12px;padding:12px 16px;text-decoration:none;font-weight:700}
+  .fs-box{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px}
+  .fs-input{width:100%;padding:14px 16px;border:1px solid #e5e7eb;border-radius:12px;font-size:16px;outline:none}
+  .fs-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .fs-btn{background:#111827;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+
+  .fs-table{background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;margin-top:14px}
+  .fs-head,.fs-row{display:grid;grid-template-columns:1fr 110px 120px 80px;align-items:center}
+  .fs-head{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:12px 14px;font-weight:700}
+  .fs-row{border-top:1px solid #e5e7eb;padding:12px 14px}
+  .fs-title{font-weight:600;word-break:break-word}
+  .fs-tags{color:#6b7280;font-size:12px;margin-top:2px}
+  .fs-size{white-space:nowrap}
+  .fs-open{display:inline-block;background:#111827;color:#fff;text-decoration:none;border-radius:8px;padding:8px 12px;font-weight:700}
+  .fs-open[aria-disabled="true"]{opacity:.45;pointer-events:none}
+  .fs-empty{padding:14px;color:#6b7280;display:none}
+  .fs-pager{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-top:1px solid #e5e7eb}
+  .fs-meta-text{color:#6b7280;margin:10px 2px 0}
+
+  .hide-sm{display:block}
+  .show-sm{display:none}
+  .fs-inline{display:none}
+
+  @media (max-width:640px){
+    .fs-head{display:none}
+    .fs-row{grid-template-columns:1fr auto;gap:12px}
+    .hide-sm{display:none}
+    .show-sm{display:inline-block}
+    .fs-inline{display:flex;gap:12px;color:#6b7280;font-size:12px;margin-top:6px}
+    .fs-inline .fs-clicks::before{content:"Клики: "}
+  }
+</style>
+
+<div class="fs-wrap">
+  <div class="fs-card">
+    <h2 style="margin:0 0 12px;font-size:26px;font-weight:800">Найти файл по ссылке</h2>
+
+    <div class="fs-cta">
+      <a class="fs-btn-cta" href="tel:+7XXXXXXXXXX">Позвонить</a>
+      <a class="fs-btn-wa" href="https://wa.me/7XXXXXXXXXX" target="_blank" rel="noopener">WhatsApp</a>
+    </div>
+
+    <!-- Парольная панель -->
+    <div id="lock" class="fs-box" style="margin-top:12px">
+      <h3 style="margin:0 0 8px;font-size:18px;font-weight:800">Доступ по паролю</h3>
+      <input id="pass" class="fs-input" type="password" placeholder="Введите пароль">
+      <div class="fs-actions">
+        <button id="unlockBtn" class="fs-btn">Открыть доступ</button>
+      </div>
+      <p id="lockMsg" style="color:#b91c1c;display:none;margin-top:8px">Неверный пароль</p>
+      <p style="color:#6b7280;margin-top:8px">После ввода пароля кнопки «Открыть» станут активны.</p>
+    </div>
+
+    <div class="fs-box" style="margin-top:12px">
+      <input id="q" class="fs-input" type="search" inputmode="search"
+             placeholder="Опишите файл: «драйвер», «прошивка», «инструкция»…">
+      <p style="margin:10px 0 12px;color:#6b7280">Начните ввод (минимум 2 буквы) — покажем найденные файлы. Или «Показать всё».</p>
+      <div class="fs-actions">
+        <button id="showAll" class="fs-btn">Показать всё</button>
+        <button id="resetClicks" class="fs-btn" style="background:#6b7280">Сбросить счётчики кликов</button>
+      </div>
+    </div>
+
+    <div class="fs-table">
+      <div class="fs-head">
+        <div>Файл</div><div>Размер</div><div>Открыть</div><div>Клики</div>
+      </div>
+      <div id="rows"></div>
+      <div id="empty" class="fs-empty">Ничего не найдено — попробуйте по-другому сформулировать</div>
+
+      <div id="pager" class="fs-pager">
+        <button id="prev" disabled class="fs-btn" style="background:#fff;color:#111827;border:1px solid #e5e7eb">Назад</button>
+        <div id="pageInfo" style="color:#374151">Стр. 1/1</div>
+        <button id="next" disabled class="fs-btn" style="background:#fff;color:#111827;border:1px solid #e5e7eb">Вперёд</button>
+      </div>
+    </div>
+
+    <p id="meta" class="fs-meta-text">Загружено файлов: …</p>
+    <details style="margin-top:6px;color:#6b7280">
+      <summary>Админ-подсказка: ссылка на публикацию CSV</summary>
+      <div id="csv-hint" style="word-break:break-all"></div>
+    </details>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ==== НАСТРОЙКИ ====
+  const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQr5tjcoANOKmeK8Mx4B2nHKrHdprWIcVrMBGd1Iqo4NW3-0xO9dHaTGR5HWxFa3DWWOAl6AkxVF7Lw/pub?gid=0&single=true&output=csv"; // <-- ВСТАВЬТЕ СВОЮ output=csv
+  const CACHE_KEY = "file_search_csv_v2";
+  const CACHE_TTL_MIN = 60;
+  const PAGE_SIZE = 20;
+  const PASS_HASH_HEX = "REPLACE_WITH_YOUR_SHA256_HEX"; // <-- ВСТАВЬТЕ SHA-256(пароля) в hex
+  // ====================
+
+  const $  = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+
+  // UI элементы
+  const rowsBox = $("#rows"), emptyBox = $("#empty"), meta = $("#meta");
+  const q = $("#q"), showAllBtn = $("#showAll"), resetClicksBtn = $("#resetClicks");
+  const prevBtn = $("#prev"), nextBtn = $("#next"), pageInfo = $("#pageInfo");
+  const hint = $("#csv-hint"); hint.textContent = CSV_URL;
+
+  // "Замок"
+  const lockBox = $("#lock");
+  const passInput = $("#pass");
+  const unlockBtn = $("#unlockBtn");
+  const lockMsg = $("#lockMsg");
+  const ACCESS_KEY = "fs_access_ok";
+  let ACCESS_OK = sessionStorage.getItem(ACCESS_KEY) === "1";
+
+  // Служебные
+  let DATA = [], FILTERED = [], page = 1;
+
+  const norm = s => (s||"").toString().toLowerCase()
+                     .normalize("NFKD").replace(/[ё]/g,"е").replace(/[\u0300-\u036f]/g,"").trim();
+  const escapeHTML = s => (s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+  const mark = (html, q) => { if(!q) return escapeHTML(html);
+    try{ const re=new RegExp("("+q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","ig"); return escapeHTML(html).replace(re,"<mark>$1</mark>"); }
+    catch{ return escapeHTML(html); }};
+
+  // CSV-парсер с авто-делимитером
+  function parseCSV(text){
+    const first = text.split(/\r?\n/).find(l=>l.trim().length)||"";
+    const delim = (first.match(/;/g)||[]).length > (first.match(/,/g)||[]).length ? ";" : ",";
+    const lines = text.replace(/\r/g,"").split("\n").filter(x=>x.trim().length);
+    if(!lines.length) return [];
+    const head = splitCSVLine(lines[0],delim).map(norm);
+    return lines.slice(1).map(line=>{
+      const cells = splitCSVLine(line,delim);
+      const obj = {}; head.forEach((h,i)=>obj[h]=cells[i] ?? "");
+      return obj;
+    });
+  }
+  function splitCSVLine(line,d){
+    const out=[]; let cur=""; let quoted=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i], n=line[i+1];
+      if(c=='"'){ if(quoted && n=='"'){ cur+='"'; i++; } else { quoted=!quoted; } }
+      else if(c==d && !quoted){ out.push(cur); cur=""; }
+      else cur+=c;
+    }
+    out.push(cur); return out;
+  }
+
+  // Кэш CSV
+  function loadCache(){
+    try{
+      const raw = localStorage.getItem(CACHE_KEY);
+      if(!raw) return null;
+      const {ts,data,url} = JSON.parse(raw);
+      if(url !== CSV_URL) return null;
+      if(Date.now() - ts > CACHE_TTL_MIN*60*1000) return null;
+      return data;
+    }catch{ return null; }
+  }
+  function saveCache(d){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify({ts:Date.now(),data:d,url:CSV_URL})); }catch{} }
+
+  async function loadCSV(url){
+    const cached = loadCache(); if(cached) return cached;
+    const res = await fetch(url, {cache:"no-store"});
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const txt = await res.text();
+    if(!txt.trim()) throw new Error("Пустой CSV");
+    const data = parseCSV(txt); saveCache(data); return data;
+  }
+
+  // Поля строки
+  function mapRow(r){
+    const get = k => r[k] ?? r[k.toLowerCase()] ?? "";
+    return {
+      name: get("name") || get("название") || get("file") || get("файл"),
+      url : get("url")  || get("ссылка")   || get("link"),
+      size: get("size") || get("размер"),
+      tags: get("tags") || get("теги"),
+      desc: get("desc") || get("описание")
+    };
+  }
+
+  // SHA-256 строки -> hex
+  async function sha256Hex(str){
+    const enc = new TextEncoder().encode(str);
+    const buf = await crypto.subtle.digest("SHA-256", enc);
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+  }
+
+  // Локальные клики
+  const CLICK_KEY = "file_search_clicks_v2";
+  function getClicks(){ try{ return JSON.parse(localStorage.getItem(CLICK_KEY)||"{}"); }catch{ return {}; } }
+  function setClicks(v){ try{ localStorage.setItem(CLICK_KEY, JSON.stringify(v)); }catch{} }
+  function incClick(url){ const m=getClicks(); m[url]=(m[url]||0)+1; setClicks(m); }
+
+  // Пагинация
+  function paginate(list, p, size){
+    const total = Math.max(1, Math.ceil(list.length/size));
+    const cur = Math.min(Math.max(1,p), total);
+    const start = (cur-1)*size;
+    return {slice:list.slice(start,start+size), cur, total};
+  }
+
+  // Замок: включение/выключение UI
+  function applyLockUI(){
+    lockBox.style.display = ACCESS_OK ? "none" : "block";
+  }
+  // Замок: блокировать кнопки "Открыть", если нет доступа
+  function gateLinks(){
+    $$(".open-btn").forEach(a=>{
+      if (ACCESS_OK){
+        a.removeAttribute("aria-disabled");
+      } else {
+        a.setAttribute("aria-disabled","true");
+      }
+    });
+  }
+
+  // Рендер
+  function render(list, qstr){
+    const {slice, cur, total} = paginate(list, page, PAGE_SIZE);
+    page = cur;
+    const clicks = getClicks();
+
+    rowsBox.innerHTML = slice.map(r=>{
+      const a = mapRow(r);
+      const title = a.desc ? `${a.name} — ${a.desc}` : a.name;
+      const qn = norm(qstr);
+      const cnt = clicks[a.url] || 0;
+      const url = a.url ? escapeHTML(a.url) : "";
+      return `
+        <div class="fs-row">
+          <div>
+            <div class="fs-title">${mark(title, qn)}</div>
+            ${a.tags ? `<div class="fs-tags">#${escapeHTML(a.tags)}</div>` : ""}
+            <div class="fs-inline">
+              <span class="fs-size">${escapeHTML(a.size || "—")}</span>
+              <span class="fs-clicks" data-clicks-for="${url}">${cnt}</span>
+            </div>
+          </div>
+
+          <div class="fs-size hide-sm">${escapeHTML(a.size || "—")}</div>
+          <div class="hide-sm">
+            ${url ? `<a href="${url}" target="_blank" rel="noopener" data-url="${url}" class="fs-open open-btn">Открыть</a>` : "—"}
+          </div>
+          <div class="hide-sm" data-clicks-for="${url}">${cnt}</div>
+
+          <div class="show-sm">
+            ${url ? `<a href="${url}" target="_blank" rel="noopener" data-url="${url}" class="fs-open open-btn">Открыть</a>` : ""}
+          </div>
+        </div>`;
+    }).join("");
+
+    emptyBox.style.display = slice.length ? "none" : "block";
+    meta.textContent = `Загружено файлов: ${DATA.length} • Найдено: ${list.length}`;
+    pageInfo.textContent = `Стр. ${cur} / ${total}`;
+    prevBtn.disabled = cur <= 1;
+    nextBtn.disabled = cur >= total;
+
+    // обработчики кликов
+    $$(".open-btn").forEach(a=>{
+      a.addEventListener("click", (e) => {
+        if (!ACCESS_OK){ e.preventDefault(); passInput?.focus(); return; }
+        const u = a.getAttribute("data-url");
+        if(!u) return;
+        incClick(u);
+        const cellList = document.querySelectorAll('[data-clicks-for="'+CSS.escape(u)+'"]');
+        cellList.forEach(cell => cell.textContent = (parseInt(cell.textContent)||0) + 1);
+      });
+    });
+
+    // применить замок к новым кнопкам
+    gateLinks();
+  }
+
+  function doSearch(qstr){
+    const n = norm(qstr);
+    if (n.length < 2) { FILTERED = []; render([], n); return; }
+    FILTERED = DATA.filter(r=>{
+      const a = mapRow(r);
+      const blob = [a.name,a.desc,a.tags,a.url].map(norm).join(" ");
+      return blob.includes(n);
+    });
+    page = 1;
+    render(FILTERED, qstr);
+  }
+
+  // События
+  $("#q").addEventListener("input", e => doSearch(e.target.value));
+  $("#showAll").addEventListener("click", () => { page=1; FILTERED = DATA.slice(); render(FILTERED, ""); });
+  $("#resetClicks").addEventListener("click", () => { localStorage.removeItem(CLICK_KEY); render(FILTERED.length?FILTERED:[], q.value); });
+  $("#prev").addEventListener("click", () => { if(page>1){ page--; render(FILTERED.length?FILTERED:[], q.value); } });
+  $("#next").addEventListener("click", () => { page++; render(FILTERED.length?FILTERED:[], q.value); });
+
+  // Кнопка «Открыть доступ»
+  $("#unlockBtn").addEventListener("click", async ()=>{
+    lockMsg.style.display = "none";
+    const val = (passInput?.value || "").trim();
+    if(!val) { lockMsg.textContent="Пароль пустой"; lockMsg.style.display="block"; return; }
+    const hex = await sha256Hex(val);
+    if (hex === PASS_HASH_HEX){
+      ACCESS_OK = true;
+      sessionStorage.setItem(ACCESS_KEY, "1");
+      applyLockUI();
+      render(FILTERED.length?FILTERED:[], q.value);
+    } else {
+      lockMsg.textContent = "Неверный пароль";
+      lockMsg.style.display = "block";
+    }
+  });
+
+  // Инициализация
+  (async () => {
+    try {
+      applyLockUI();
+      const data = await loadCSV(CSV_URL);
+      DATA = data;
+      meta.textContent = `Загружено файлов: ${DATA.length}`;
+      render([], "");
+    } catch(err){
+      rowsBox.innerHTML = `<div style="padding:14px;color:#b91c1c">Ошибка загрузки CSV: ${escapeHTML(err.message)}</div>`;
+      emptyBox.style.display = "none";
+      meta.textContent = "Загрузка не удалась";
+      $("#pager").style.display = "none";
+    }
+  })();
+})();
+</script>
+</html>
