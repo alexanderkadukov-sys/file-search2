@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Поиск файлов — УграРемКомп</title>
+<style>
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Arial; background: #f6f7f9; color: #111; margin: 0; }
+.wrap { max-width: 900px; margin: 0 auto; padding: 20px; }
+input,button { font-size: 16px; border-radius: 8px; }
+input { width:100%;padding:12px 14px;border:1px solid #d1d5db;outline:none;margin-bottom:10px }
+button { background:#111827;color:#fff;padding:10px 14px;border:none;cursor:pointer;font-weight:700;border-radius:8px }
+button:hover { background:#16a34a }
+.table { background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin-top:16px }
+.row { display:grid;grid-template-columns:1fr 120px 100px 80px;align-items:center;padding:10px 14px;border-top:1px solid #e5e7eb }
+.row:first-child { border-top:none }
+.row.head { background:#f9fafb;font-weight:700 }
+.row a { background:#111827;color:#fff;text-decoration:none;border-radius:8px;padding:6px 10px }
+.row a:hover { background:#16a34a }
+#meta { margin-top:10px;color:#6b7280;font-size:14px }
+mark { background:#bbf7d0;color:inherit }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>Найти файл</h2>
+  <input id="q" type="search" placeholder="Введите часть названия или описания файла..." />
+  <p style="margin:10px 0;color:#6b7280">Минимум 2 буквы. Или нажмите «Показать всё».</p>
+  <button id="showAll">Показать всё</button>
+
+  <div class="table" id="table">
+    <div class="row head"><div>Файл</div><div>Размер</div><div>Открыть</div><div>Клики</div></div>
+    <div id="rows"></div>
+  </div>
+
+  <p id="meta">Загружается...</p>
+</div>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQr5tjcoANOKmeK8Mx4B2nHKrHdprWIcVrMBGd1Iqo4NW3-0xO9dHaTGR5HWxFa3DWWOAl6AkxVF7Lw/pub?gid=0&single=true&output=csv";
+const rows=document.getElementById('rows'),meta=document.getElementById('meta'),q=document.getElementById('q');const showAll=document.getElementById('showAll');
+let DATA=[],VIEW=[];const norm=s=>(s||"").toLowerCase().replace(/[ё]/g,"е").trim();const esc=s=>(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));const mark=(t,q)=>!q?esc(t):esc(t).replace(new RegExp(`(${q})`,"ig"),"<mark>$1</mark>");
+function parseCSV(t){const l=t.split(/\r?\n/).filter(x=>x.trim());if(!l.length)return[];const h=l[0].split(",");return l.slice(1).map(x=>{const c=x.split(",");const o={};h.forEach((k,i)=>o[k]=c[i]);return o;});}
+function mapRow(r){return{name:r.name||r.файл||"",url:r.url||r.ссылка||"",size:r.size||r.размер||"",tags:r.tags||r.теги||"",desc:r.desc||r.описание||""};}
+const CK="fs_clicks";function getClicks(){try{return JSON.parse(localStorage.getItem(CK)||"{}");}catch{return{}}}function setClicks(v){try{localStorage.setItem(CK,JSON.stringify(v));}catch{}}function incClick(u){const m=getClicks();m[u]=(m[u]||0)+1;setClicks(m);}
+function render(list,qstr){const clicks=getClicks();rows.innerHTML=list.map(r=>{const a=mapRow(r);const title=a.desc?`${a.name} — ${a.desc}`:a.name;const cnt=clicks[a.url]||0;return `<div class='row'><div>${mark(title,norm(qstr))}</div><div>${a.size||"—"}</div><div>${a.url?`<a href='${a.url}' target='_blank' data-url='${a.url}'>Открыть</a>`:"—"}</div><div data-clicks-for='${a.url}'>${cnt}</div></div>`;}).join("");meta.textContent=`Найдено: ${list.length} / Всего: ${DATA.length}`;document.querySelectorAll("[data-url]").forEach(a=>a.onclick=()=>{const u=a.dataset.url;incClick(u);document.querySelectorAll(`[data-clicks-for='${u}']`).forEach(c=>c.textContent=(+c.textContent||0)+1);});}
+q.oninput=()=>{const v=q.value.trim();if(v.length<2){rows.innerHTML="";return;}const n=norm(v);VIEW=DATA.filter(r=>{const a=mapRow(r);return [a.name,a.desc,a.tags].map(norm).join(" ").includes(n)});render(VIEW,v);}
+showAll.onclick=()=>render(DATA,"");
+(async()=>{try{const res=await fetch(CSV_URL);if(!res.ok)throw new Error("Ошибка HTTP "+res.status);const txt=await res.text();DATA=parseCSV(txt);render(DATA,"");}catch(e){rows.innerHTML=`<div style='padding:12px;color:#b91c1c'>Ошибка: ${e.message}</div>`;}})();
+</script>
+</body>
+</html>
