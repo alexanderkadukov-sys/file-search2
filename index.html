@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Поиск файлов — УграРемКомп</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root{
+  --bg:#0b0c10;--card:#111317;--text:#e5e7eb;--muted:#9aa1aa;--line:#23262d;
+  --brand:#19c37d;--brand2:#14a169;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif}
+a{color:#a7e6c6;text-decoration:underline}
+.container{max-width:1100px;margin:0 auto;padding:16px}
+.header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.h1{font-size:clamp(20px,3.6vw,28px);font-weight:700;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.controls{display:grid;grid-template-columns:1fr 150px 130px;gap:10px;padding:12px;border-bottom:1px solid var(--line)}
+@media (max-width:720px){.controls{grid-template-columns:1fr 1fr}}
+input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0e1116;color:var(--text)}
+input::placeholder{color:#808792}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;background:var(--brand);color:#07110a;
+     border:0;border-radius:12px;font-weight:600;cursor:pointer}
+.btn:active{transform:translateY(1px)}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:separate;border-spacing:0}
+th,td{padding:12px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{position:sticky;top:0;background:#14171d;z-index:1;text-align:left;font-weight:700}
+.meta{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:10px 12px;border-top:1px solid var(--line);flex-wrap:wrap}
+.meta small{color:var(--muted)}
+.pager{display:flex;gap:8px;align-items:center}
+.pager button{padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#0f1217;color:var(--text);cursor:pointer}
+.pager button[disabled]{opacity:.45;cursor:not-allowed}
+.badge{background:#0f1712;border:1px solid #1c2c22;padding:4px 8px;border-radius:999px;color:#a9d9bf}
+footer{color:var(--muted);text-align:center;margin:18px 0}
+.lock{position:fixed;inset:0;display:grid;place-items:center;background:#0c0e12}
+.lock .panel{width:min(520px,92vw);padding:22px;border:1px solid var(--line);border-radius:16px;background:#101319;
+             box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.lock .panel h2{margin:0 0 8px;font-size:22px}
+.lock .row{display:flex;gap:8px;margin-top:12px}
+.lock input{flex:1}
+.lock .err{color:#ff8a8a;margin-top:10px;min-height:1.25em}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- Блок авторизации -->
+<div id="lock" class="lock">
+  <div class="panel">
+    <h2>Доступ по паролю</h2>
+    <p style="color:#9aa1aa;margin:0">Введите пароль, чтобы открыть поиск по базе.</p>
+    <div class="row">
+      <input id="pwd" type="password" placeholder="Пароль" autocomplete="current-password">
+      <button class="btn" id="go">Войти</button>
+    </div>
+    <div id="perr" class="err"></div>
+    <small style="color:#6f7782">Пароль проверяется локально (SHA-256), данные никуда не отправляются.</small>
+  </div>
+</div>
+
+<!-- Основное приложение -->
+<div id="app" class="container hidden">
+  <div class="header">
+    <h1 class="h1">Поиск по файлам</h1>
+    <span class="badge" id="badge">—</span>
+  </div>
+
+  <div class="card">
+    <div class="controls">
+      <input id="q" type="text" placeholder="Ищите по словам, ссылкам, номерам — поиск по всем колонкам">
+      <select id="per">
+        <option value="25">25 на странице</option>
+        <option value="50" selected>50 на странице</option>
+        <option value="100">100 на странице</option>
+      </select>
+      <button class="btn" id="clear">Очистить</button>
+    </div>
+
+    <div class="table-wrap">
+      <table id="tbl"><thead></thead><tbody></tbody></table>
+    </div>
+
+    <div class="meta">
+      <small id="pageInfo"></small>
+      <div class="pager">
+        <button id="prev">Назад</button>
+        <button id="next">Вперёд</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>© УграРемКомп</footer>
+</div>
+
+<script>
+/* === НАСТРОЙКИ === */
+// ссылка на опубликованный CSV из Google Таблиц (формат /d/e/.../pub?gid=...&output=csv)
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR9L9aeACtJASDu24QmYMDUpEkWAFB5977LMJ_FBPuoARlo7I8S_z3x4fzQxW8t7_DF6E3aplRwkS7/pub?gid=0&single=true&output=csv";
+// SHA-256 пароля "a1980"
+const PASS_HASH_HEX = "ca4d4c3c5b0d70ba148f9774d92594c86954d2235545f73b6ae853608f5414f1";
+
+/* === УТИЛИТЫ === */
+const $ = s => document.querySelector(s);
+const norm = s => (s||"").toLowerCase().replace(/[ёЁ]/g,"е").trim();
+const toHex = b => [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+function parseCSV(t){const r=[],a=/,(?=(?:(?:[^"]*"){2})*[^"]*$)/;t.split(/\r?\n/).forEach(l=>{if(!l.trim())return;r.push(l.split(a).map(v=>v.replace(/^"|"$/g,"")))});return r;}
+function guessCell(v){const s=(v||"").trim();if(/^https?:/i.test(s))return `<a href="${s}" target="_blank">${s}</a>`;return s;}
+
+/* === ПРОВЕРКА ПАРОЛЯ === */
+(async()=>{
+  if(sessionStorage.getItem("ok")==="1"){unlock();return;}
+  $("#go").onclick=check;
+  $("#pwd").onkeydown=e=>{if(e.key==="Enter")check();}
+  async function check(){
+    $("#perr").textContent="";
+    const txt=$("#pwd").value;
+    const buf=new TextEncoder().encode(txt);
+    const hash=await crypto.subtle.digest("SHA-256",buf);
+    const hex=toHex(hash);
+    if(hex===PASS_HASH_HEX){sessionStorage.setItem("ok","1");unlock();}
+    else $("#perr").textContent="Неверный пароль";
+  }
+})();
+
+function unlock(){
+  $("#lock").classList.add("hidden");
+  $("#app").classList.remove("hidden");
+  init();
+}
+
+/* === ОСНОВНАЯ ЛОГИКА === */
+let HEAD=[],DATA=[],VIEW=[],page=1,per=50;
+function bindUI(){
+  $("#q").oninput=applyFilter;
+  $("#clear").onclick=()=>{$("#q").value="";applyFilter();}
+  $("#per").onchange=e=>{per=parseInt(e.target.value)||50;page=1;paint();}
+  $("#prev").onclick=()=>{if(page>1){page--;paint();}}
+  $("#next").onclick=()=>{if(page<Math.ceil(VIEW.length/per)){page++;paint();}}
+}
+
+async function init(){
+  bindUI();
+  $("#badge").textContent="Загрузка…";
+  try{
+    const url=CSV_URL+(CSV_URL.includes("?")?"&":"?")+"t="+Date.now();
+    const r=await fetch(url,{cache:"no-store"});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const text=await r.text();
+    const rows=parseCSV(text);
+    HEAD=rows[0];DATA=rows.slice(1);
+    $("#tbl thead").innerHTML="<tr>"+HEAD.map(h=>`<th>${h}</th>`).join("")+"</tr>";
+    applyFilter();
+  }catch(e){
+    $("#badge").textContent="Ошибка загрузки CSV";
+    console.error(e);
+  }
+}
+
+function applyFilter(){
+  const q=norm($("#q").value);
+  VIEW=!q?DATA:DATA.filter(r=>r.some(c=>norm(c).includes(q)));
+  page=1;
+  paint();
+}
+
+function paint(){
+  const total=VIEW.length;
+  const pages=Math.max(1,Math.ceil(total/per));
+  const start=(page-1)*per;
+  const slice=VIEW.slice(start,start+per);
+  $("#tbl tbody").innerHTML=slice.map(r=>"<tr>"+r.map(c=>`<td>${guessCell(c)}</td>`).join("")+"</tr>").join("");
+  $("#pageInfo").textContent=`Найдено: ${total} / Всего: ${DATA.length} — стр. ${page}/${pages}`;
+  $("#badge").textContent=total?`Записей: ${total}`:"Ничего не найдено";
+  $("#prev").disabled=page<=1;
+  $("#next").disabled=page>=pages;
+}
+</script>
+</body>
+</html>
