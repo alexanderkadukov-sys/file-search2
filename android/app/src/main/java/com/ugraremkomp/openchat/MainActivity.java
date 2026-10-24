@@ -10,12 +10,14 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.Environment;
 import android.os.Parcelable;
 import android.provider.MediaStore;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.SslErrorHandler;
@@ -66,9 +68,30 @@ public final class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         getWindow().setStatusBarColor(NAVY);
         getWindow().setNavigationBarColor(NAVY);
+        // Android 15+ enforces edge-to-edge for targetSdk 35. Use explicit
+        // insets to keep the chat below the clock/camera cutout and above gestures.
+        // Status icons must stay light on the dark app chrome.
+        getWindow().getDecorView().setSystemUiVisibility(0);
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(NAVY);
+        root.setOnApplyWindowInsetsListener((view, insets) -> {
+            final int statusTop;
+            final int navigationBottom;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                statusTop = insets.getInsets(
+                        WindowInsets.Type.statusBars()
+                                | WindowInsets.Type.displayCutout()).top;
+                navigationBottom = insets.getInsets(
+                        WindowInsets.Type.navigationBars()).bottom;
+            } else {
+                statusTop = insets.getSystemWindowInsetTop();
+                navigationBottom = insets.getSystemWindowInsetBottom();
+            }
+            // Never consume the insets. WebView/IME may still need them.
+            view.setPadding(0, statusTop, 0, navigationBottom);
+            return insets;
+        });
 
         webView = new WebView(this);
         webView.setBackgroundColor(NAVY);
