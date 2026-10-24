@@ -2,12 +2,12 @@
   "id": "./",
   "name": "OpenChat — Свободное общение",
   "short_name": "OpenChat",
-  "description": "Публичный чат без регистрации с сообщениями, фото и файлами",
+  "description": "OpenChat — общение без регистрации, сообщения и файлы",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0d1021",
-  "theme_color": "#0d1021",
+  "background_color": "#ffffff",
+  "theme_color": "#3390ec",
   "icons": [
     {
       "src": "./favicon.svg",
