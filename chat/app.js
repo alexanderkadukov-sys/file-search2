@@ -144,6 +144,27 @@
     return { ...message, signed_url: result.data.signedUrl };
   }
   // Presence is scoped to the current room; never invent member counts.
+  // Sidebar previews use existing message rows, not fabricated sample data.
+  function updateRoomPreview(roomKey, message) {
+    if (!message) return;
+    const button = document.querySelector('#rooms [data-room="' + roomKey + '"]');
+    const preview = button && button.querySelector('small');
+    if (!preview) return;
+    const line = (message.body || "").trim().replace(/\s+/g, " ");
+    preview.textContent = line.slice(0, 90) ||
+      (message.file_type && message.file_type.startsWith("image/") ? "📷 Фотография" : "📎 Вложение");
+    if (message.created_at) button.title = rooms[roomKey].title + " · " + time(message.created_at);
+  }
+  async function loadRoomPreviews() {
+    if (!state.live || !state.client) return;
+    await Promise.all(Object.keys(rooms).map(async (key) => {
+      const result = await state.client.from("chat_messages")
+        .select("body,file_type,created_at")
+        .eq("room_id", rooms[key].id)
+        .order("created_at", { ascending: false }).limit(1);
+      if (!result.error && result.data && result.data[0]) updateRoomPreview(key, result.data[0]);
+    }));
+  }
   function renderMembers(groups) {
     const list = $("members-list");
     if (!list) return;
@@ -251,6 +272,7 @@
     if (result.error) { toast("Не удалось загрузить переписку: проверьте SQL и RLS"); console.warn(result.error); state.messages = []; }
     else state.messages = await Promise.all(result.data.reverse().map(signAttachment));
     if (request !== state.switching) return;
+    if (state.messages.length) updateRoomPreview(nextRoom, state.messages[state.messages.length - 1]);
     render();
     const channel = state.client.channel("openchat-" + nextRoom, { config: { presence: { key: state.userId } } });
     channel.on("postgres_changes", {
@@ -262,6 +284,7 @@
       if (state.room !== nextRoom || state.messages.some((m) => m.id === message.id)) return;
       state.messages.push(message);
       state.messages = state.messages.slice(-100);
+      updateRoomPreview(nextRoom, message);
       render();
     });
     channel.on("presence", { event: "sync" }, () => {
@@ -328,7 +351,9 @@
         if (inserted.error) throw inserted.error;
         if (state.room === destination && !state.messages.some((m) => m.id === inserted.data.id)) {
           state.messages.push(await signAttachment(inserted.data));
-          state.messages = state.messages.slice(-100); render();
+          state.messages = state.messages.slice(-100);
+          updateRoomPreview(destination, inserted.data);
+          render();
         }
       } else {
         const row = {
@@ -387,10 +412,16 @@
     ["invite-top", "invite-side", "invite-welcome"].forEach((id) => $(id).addEventListener("click", shareChat));
     $("theme-toggle").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     $("members-toggle").addEventListener("click", () => {
-      const collapsed = $(".main").classList.toggle("members-collapsed");
+      const collapsed = document.querySelector(".main").classList.toggle("members-collapsed");
       $("members-toggle").setAttribute("aria-expanded", String(!collapsed));
       $("members-toggle").setAttribute("aria-label",
         collapsed ? "Показать участников комнаты" : "Скрыть участников комнаты");
+    });
+    $("room-search").addEventListener("input", (event) => {
+      const query = event.target.value.trim().toLocaleLowerCase("ru");
+      document.querySelectorAll("#rooms [data-room]").forEach((button) => {
+        button.hidden = !button.textContent.toLocaleLowerCase("ru").includes(query);
+      });
     });
     $("open-menu").addEventListener("click", () => drawer(true));
     $("close-menu").addEventListener("click", () => drawer(false));
@@ -442,11 +473,13 @@
     let preferred = "light";
     try {
       const saved = localStorage.getItem("openchat-theme");
-      preferred = saved === "light" ? "light" : "dark";
+      preferred = saved === "dark" ? "dark" : "light";
     } catch (_) {}
     setTheme(preferred);
     if (!state.nickname) { show("name-modal"); el.nameInput.focus(); }
     await connect();
+    if (state.live) loadRoomPreviews().catch((err) =>
+      console.warn("OpenChat room previews:", err.message));
     await switchRoom("general");
   }
   start().catch((err) => { console.error(err); toast("Не удалось запустить приложение"); });
