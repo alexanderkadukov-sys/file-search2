@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="280" viewBox="0 0 560 280" role="img" aria-label="Горный пейзаж на закате">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2=".85" y2="1"><stop stop-color="#302c86"/><stop offset=".4" stop-color="#7659bf"/><stop offset=".73" stop-color="#da83b2"/><stop offset="1" stop-color="#e4a5a7"/></linearGradient>
+<linearGradient id="lake" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#8360b0"/><stop offset="1" stop-color="#252552"/></linearGradient>
+<linearGradient id="back" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#53448d"/><stop offset="1" stop-color="#252755"/></linearGradient>
+<linearGradient id="front" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#283365"/><stop offset="1" stop-color="#0e1838"/></linearGradient>
+<filter id="blur"><feGaussianBlur stdDeviation="16"/></filter>
+</defs>
+<rect width="560" height="280" fill="url(#sky)"/>
+<circle cx="411" cy="77" r="39" fill="#fbc7c4" opacity=".6" filter="url(#blur)"/>
+<circle cx="413" cy="78" r="23" fill="#ffe2d5" opacity=".68"/>
+<path d="M0 153 49 119 85 141 146 62 190 116 238 35 301 115 342 66 391 129 447 79 514 146 560 109V280H0Z" fill="url(#back)"/>
+<path d="m116 100 30-38 29 42-26-13-15 9-13-3Zm99-39 23-26 31 44-30-15-15 4Zm112 22 15-17 22 29-21-8-12 4Zm106 10 14-14 19 21-17-6Z" fill="#c6c2e3" opacity=".9"/>
+<path d="M0 182 55 160 98 170 159 129 203 157 266 109 323 151 387 126 460 160 529 132 560 147V280H0Z" fill="#342c66"/>
+<path d="M0 204q82-32 160-12 70-11 121-8 105-17 279 6v90H0Z" fill="url(#lake)"/>
+<g opacity=".35" stroke="#ecc0d0" stroke-width="2"><path d="M40 221q70-4 145-2M240 224q90-5 179-1M120 249q109-5 202-3M368 259q70-3 124-2"/></g>
+<path d="M0 208 34 163 59 211 93 178 115 228 158 185 188 239 212 216 238 253 278 235 305 258 350 209 380 251 414 226 453 262 496 220 531 235 560 210v70H0Z" fill="url(#front)"/>
+<g fill="#101832">
+<path d="m15 228 13-58 13 58h-8v52H23v-52Zm50 20 13-64 14 64h-10v32h-8v-32Zm419 2 13-73 14 73h-9v30h-9v-30Zm37-4 10-49 12 49h-9v34h-7v-34Z"/>
+</g>
+</svg>
