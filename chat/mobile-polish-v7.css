@@ -256,3 +256,219 @@ html[data-theme="dark"] .message-row .bubble>.sender {color:#81c4fa!important;}
 @media(prefers-reduced-motion:reduce){
  .app>.sidebar,.room,.message-row{transition:none!important;animation:none!important;}
 }
+
+
+/* OpenChat V8 — Telegram-inspired final refinement.
+   Presentation only. No changes to anonymous auth, chat_messages, Realtime,
+   storage, uploads, or the site's security policies. */
+:root {
+  --oc8-blue:#3390ec;
+  --oc8-blue-hover:#2388e8;
+  --oc8-text:#1f2c39;
+  --oc8-muted:#8796a3;
+  --oc8-chat:#dfe9e6;
+}
+html {scroll-behavior:auto;}
+#rooms .room:focus-visible,
+.composer button:focus-visible,
+.topbar button:focus-visible,
+.profile:focus-visible {
+  outline:2px solid var(--oc8-blue)!important;
+  outline-offset:-2px;
+}
+#rooms .room:active {transform:none!important;}
+/* Avoid the tall promotional card on a populated chat, while keeping
+   the actual empty-room welcome screen and its invitation action. */
+.welcome-card[hidden], .empty[hidden] {display:none!important;}
+.message-row {contain:layout style;}
+.message-row .bubble-footer time {font-variant-numeric:tabular-nums;}
+.message-row .bubble-footer button {
+  border-radius:4px!important;
+  transition:opacity .15s ease,background .15s ease;
+}
+.message-row .bubble-footer button:focus-visible {outline-offset:1px!important;}
+/* A subtle original illustrated wallpaper, not imported Telegram artwork. */
+.conversation-workspace>.message-scroll {
+  background-color:var(--oc8-chat)!important;
+  background-image:
+    linear-gradient(rgba(225,237,233,.78),rgba(225,237,233,.78)),
+    url("./telegram-pattern.svg")!important;
+  background-repeat:repeat,repeat!important;
+  background-size:auto,192px 192px!important;
+}
+html[data-theme="dark"] .conversation-workspace>.message-scroll {
+  background-color:#0f1c26!important;
+  background-image:
+    linear-gradient(rgba(11,24,33,.86),rgba(11,24,33,.86)),
+    url("./telegram-pattern.svg")!important;
+  background-repeat:repeat,repeat!important;
+  background-size:auto,192px 192px!important;
+}
+.message-row .bubble {box-shadow:0 1px 2px rgba(20,43,49,.16)!important;}
+html[data-theme="dark"] .message-row .bubble {
+  box-shadow:0 1px 2px rgba(0,0,0,.19)!important;
+}
+.composer textarea:focus-visible {outline:none!important;}
+.composer .attach-button,.composer .emoji-button {
+  border-radius:50%!important;
+}
+.composer .send-button {
+  background:var(--oc8-blue)!important;
+  transition:background .15s,transform .15s!important;
+}
+.composer .send-button:hover {background:var(--oc8-blue-hover)!important;}
+.composer .send-button:active {transform:scale(.94);}
+html[data-theme="dark"] .composer .send-button {background:#479ae8!important;}
+@media (hover:hover) {
+ .room:hover,.profile:hover {transition:background-color .15s ease!important;}
+}
+
+/* Telegram Desktop: persistent chat list + generous conversation viewport. */
+@media (min-width:1025px) {
+  .app {max-width:none!important;width:100%!important;}
+  .sidebar {
+    flex:0 0 340px!important;width:340px!important;min-width:0!important;
+    padding:14px 12px 12px!important;
+  }
+  .brand {min-height:51px!important;margin-bottom:8px!important;padding:3px 8px!important;}
+  .brand strong {font-size:21px!important;letter-spacing:-.04em!important;}
+  .sidebar-search {margin:0 3px 15px!important;}
+  .sidebar-search input {height:43px!important;}
+  .nav-label {margin:1px 13px 9px!important;}
+  #rooms {gap:2px!important;}
+  #rooms .room {
+    min-height:70px!important;padding:9px 10px!important;
+    border-radius:12px!important;gap:11px!important;
+  }
+  #rooms .room-icon {
+    flex:0 0 50px!important;width:50px!important;
+    height:50px!important;border-radius:50%!important;
+  }
+  #rooms .room b {font-size:14px!important;line-height:1.35!important;}
+  #rooms .room small {font-size:12px!important;}
+  .room-time {font-size:11px!important;}
+  .side-actions {margin-top:16px!important;}
+  .side-share {border-radius:11px!important;}
+  .side-footer {padding-top:10px!important;}
+  .topbar {min-height:64px!important;padding:8px 22px!important;}
+  .topbar .top-icon {
+    flex:0 0 43px!important;width:43px!important;height:43px!important;
+  }
+  .top-text h1 {font-size:16px!important;}
+  .message-stack {padding:17px 26px 21px!important;max-width:930px!important;}
+  .message-row,.message-row.mine {max-width:min(73%,580px)!important;}
+  .composer-area {padding:10px 22px 17px!important;}
+  .composer {max-width:920px!important;}
+  .compose-pill {min-height:49px!important;padding-inline:7px!important;}
+  .composer .send-button {
+    flex:0 0 48px!important;width:48px!important;height:48px!important;
+  }
+  .messages {gap:7px!important;}
+  .message-scroll {
+    scrollbar-width:thin;
+    scrollbar-color:rgba(101,140,152,.35) transparent;
+  }
+}
+
+/* Mobile: the chat list and the opened conversation are separate views.
+   Leave all interactive controls functional, including invite and profile. */
+@media screen and (max-width:800px),
+       screen and (pointer:coarse) and (max-width:1024px) {
+  .app.mobile-list>.sidebar {
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  .app.mobile-list .sidebar-search {margin:9px 13px 10px!important;}
+  .app.mobile-list .sidebar-search input {
+    min-height:42px!important;height:42px!important;
+    border-radius:22px!important;font-size:16px!important;
+  }
+  .app.mobile-list #rooms .room {
+    min-height:75px!important;
+    padding:11px 10px!important;gap:12px!important;
+  }
+  .app.mobile-list #rooms .room-icon {
+    flex:0 0 51px!important;width:51px!important;height:51px!important;
+    font-size:22px!important;
+  }
+  .app.mobile-list #rooms .room b {
+    font-size:15px!important;font-weight:650!important;
+    line-height:1.3!important;
+  }
+  .app.mobile-list #rooms .room small {
+    margin-top:5px!important;font-size:12px!important;
+  }
+  .app.mobile-list #rooms .room-time {
+    font-size:11px!important;margin-top:2px!important;
+  }
+  .app.mobile-list #rooms .room.active {
+    background:rgba(51,144,236,.075)!important;
+  }
+  .app:not(.mobile-list)>.main {
+    height:100dvh!important;
+    min-height:0!important;
+  }
+  .app:not(.mobile-list) .topbar {
+    min-height:58px!important;max-height:58px!important;
+    padding:7px 9px!important;
+    border-bottom:1px solid rgba(80,120,146,.12)!important;
+  }
+  .app:not(.mobile-list) .top-icon {
+    flex:0 0 39px!important;width:39px!important;height:39px!important;
+    border-radius:50%!important;
+  }
+  .app:not(.mobile-list) .top-text h1 {font-size:15px!important;}
+  .app:not(.mobile-list) .top-text p {font-size:11px!important;}
+  .app:not(.mobile-list) .message-scroll {
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .app:not(.mobile-list) .message-scroll::-webkit-scrollbar {display:none;}
+  .app:not(.mobile-list) .message-row,
+  .app:not(.mobile-list) .message-row.mine {max-width:89%!important;}
+  .app:not(.mobile-list) .message-row .body-text {
+    font-size:14px!important;
+    line-height:1.42!important;
+  }
+  .app:not(.mobile-list) .message-row .bubble {
+    padding:7px 10px 6px!important;
+  }
+  .app:not(.mobile-list) .composer-area {
+    border-top:none!important;
+    padding:7px 7px calc(8px + env(safe-area-inset-bottom,0px))!important;
+    background:transparent!important;
+  }
+  .app:not(.mobile-list) .compose-pill {
+    min-height:46px!important;
+    padding:2px 5px!important;
+    border-radius:24px!important;
+  }
+  .app:not(.mobile-list) .composer .send-button {
+    flex:0 0 46px!important;width:46px!important;
+    min-width:46px!important;height:46px!important;
+  }
+  .app:not(.mobile-list) .composer textarea {
+    font-size:16px!important;min-height:37px!important;
+  }
+  .app:not(.mobile-list) .composer {
+    gap:7px!important;
+  }
+  .app:not(.mobile-list) .welcome-card {max-width:100%!important;}
+  .app:not(.mobile-list) .date-pill {font-size:11px!important;}
+  html[data-theme="dark"] .app.mobile-list #rooms .room.active {
+    background:rgba(91,159,218,.13)!important;
+  }
+  html[data-theme="dark"] .app:not(.mobile-list) .composer-area {
+    background:transparent!important;
+  }
+}
+@media screen and (max-width:360px) {
+  .app:not(.mobile-list) .topbar {gap:5px!important;}
+  .app:not(.mobile-list) .message-row,
+  .app:not(.mobile-list) .message-row.mine {max-width:93%!important;}
+  .app:not(.mobile-list) .composer {gap:5px!important;}
+}
+@media (prefers-reduced-motion:reduce) {
+ .composer .send-button,.room,.profile {transition:none!important;}
+}
