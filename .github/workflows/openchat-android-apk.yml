@@ -46,7 +46,7 @@ jobs:
 
       - name: Install SDK platform
         run: |
-          "$SDK_MANAGER" "platforms;android-35" "build-tools;35.0.0"
+          "$SDK_MANAGER" "platforms;android-36" "build-tools;35.0.0"
 
       - name: Bundle OpenChat interface in APK
         run: python3 android/prepare_web_assets.py
@@ -71,16 +71,16 @@ jobs:
         run: |
           test -s android/app/build/outputs/apk/debug/app-debug.apk
           mkdir -p dist
-          cp android/app/build/outputs/apk/debug/app-debug.apk dist/OpenChat-v0.3.1-debug.apk
-          unzip -l dist/OpenChat-v0.3.1-debug.apk | grep -q 'assets/chat/index.html'
-          unzip -l dist/OpenChat-v0.3.1-debug.apk | grep -q 'assets/chat/vendor/supabase.min.js'
-          unzip -t dist/OpenChat-v0.3.1-debug.apk | tail -1
-          (cd dist && sha256sum OpenChat-v0.3.1-debug.apk > SHA256SUMS.txt)
+          cp android/app/build/outputs/apk/debug/app-debug.apk dist/OpenChat-v0.4.0-debug.apk
+          unzip -l dist/OpenChat-v0.4.0-debug.apk | grep -q 'assets/chat/index.html'
+          unzip -l dist/OpenChat-v0.4.0-debug.apk | grep -q 'assets/chat/vendor/supabase.min.js'
+          unzip -t dist/OpenChat-v0.4.0-debug.apk | tail -1
+          (cd dist && sha256sum OpenChat-v0.4.0-debug.apk > SHA256SUMS.txt)
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: OpenChat-v0.3.1-Android-APK
+          name: OpenChat-v0.4.0-Android-APK
           path: dist/*
           retention-days: 30
           if-no-files-found: error
