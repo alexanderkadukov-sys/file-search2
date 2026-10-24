@@ -523,3 +523,6 @@ html[data-theme="dark"] .composer .send-button {background:#479ae8!important;}
  html[data-theme="dark"] #info-modal .dialog h2 {color:#f0f4f7!important;}
  html[data-theme="dark"] #info-modal .dialog p {color:#aebdc9!important;}
 }
+
+/* Keep the information sheet closed until a user explicitly opens it. */
+#info-modal[hidden] { display:none!important; }
