@@ -3,11 +3,11 @@
   const $ = (id) => document.getElementById(id);
   const cfg = window.OPENCHAT_CONFIG || {};
   const rooms = {
-    general: { title: "Общий чат", icon: "#" },
-    photos: { title: "Фото", icon: "◈" },
-    files: { title: "Файлы", icon: "▤" }
+    general: { title: "Общий чат", icon: "#", id: "00000000-0000-4000-8000-000000000001" },
+    photos: { title: "Фото", icon: "◈", id: "00000000-0000-4000-8000-000000000002" },
+    files: { title: "Файлы", icon: "▤", id: "00000000-0000-4000-8000-000000000003" }
   };
-  const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf", "text/plain"]);
+  const allowed = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
   const maxBytes = 8 * 1024 * 1024;
   const state = { room: "general", nickname: localStorage.getItem("openchat-name") || "", userId: null, client: null, live: false, channel: null, messages: [], selectedFile: null, switching: 0, sending: false };
   let toastTimer;
@@ -88,9 +88,8 @@
       const content = document.createElement("div"); content.className = "bubble-content";
       const name = document.createElement("div"); name.className = "sender"; name.textContent = m.nickname || "Гость"; content.appendChild(name);
       const bubble = document.createElement("div"); bubble.className = "bubble";
-      if (m.file_path && state.live && state.client) {
-        const url = state.client.storage.from(cfg.storageBucket || "chat-uploads").getPublicUrl(m.file_path).data.publicUrl;
-        attachMedia(bubble, url, m.file_type, m.file_name, m.file_size);
+      if (m.attachment_path && m.signed_url && state.live) {
+        attachMedia(bubble, m.signed_url, m.file_type, m.file_name, m.file_size);
       } else if (m.demo_attachment && m.demo_attachment.url) {
         attachMedia(bubble, m.demo_attachment.url, m.demo_attachment.type, m.demo_attachment.name, m.demo_attachment.size);
       }
@@ -134,9 +133,24 @@
     $("sidebar").classList.toggle("open", open);
     $("scrim").hidden = !open;
   }
+  async function signAttachment(message) {
+    if (!message.attachment_path || !state.client) return message;
+    const result = await state.client.storage
+      .from(cfg.storageBucket).createSignedUrl(message.attachment_path, 3600);
+    if (result.error) {
+      console.warn("OpenChat attachment:", result.error.message);
+      return message;
+    }
+    return { ...message, signed_url: result.data.signedUrl };
+  }
   async function connect() {
     if (!isConfigured || !window.supabase) {
       show("demo-banner");
+      if (isConfigured) {
+        $("demo-banner").textContent = "Нет соединения с Supabase: библиотека не загрузилась. Проверьте сеть и обновите страницу.";
+        state.userId = null;
+        return;
+      }
       state.userId = localStorage.getItem("openchat-demo-id");
       if (!state.userId) {
         state.userId = "demo-" + (globalThis.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
@@ -152,16 +166,19 @@
         if (signin.error) throw signin.error;
         userData = { user: signin.data.user };
       }
+      const probe = await state.client.from("chat_rooms").select("id")
+        .eq("id", rooms.general.id).single();
+      if (probe.error || !probe.data) throw probe.error || Error("Общий чат недоступен");
       state.userId = userData.user.id;
       state.live = true;
       hide("demo-banner");
     } catch (err) {
       show("demo-banner");
+      $("demo-banner").textContent = "Не удалось подключить Supabase. Проверьте Anonymous Sign-Ins в Authentication → Providers. Сообщения не отправляются.";
       state.live = false;
       state.client = null;
-      state.userId = localStorage.getItem("openchat-demo-id") || "demo-" + Date.now();
-      localStorage.setItem("openchat-demo-id", state.userId);
-      toast("Сервер недоступен. Открыт локальный демо-режим.");
+      state.userId = null;
+      toast("Нет соединения с сервером. Сообщения не отправляются.");
       console.warn("OpenChat connection:", err.message);
     }
   }
@@ -182,19 +199,26 @@
       state.channel = null;
     }
     if (!state.live) {
-      state.messages = demoForRoom();
+      state.messages = isConfigured ? [] : demoForRoom();
       render(); return;
     }
-    const result = await state.client.from("chat_messages").select("id,room,sender_id,nickname,body,file_path,file_name,file_type,file_size,created_at")
-      .eq("room", nextRoom).order("created_at", { ascending: false }).limit(70);
+    const result = await state.client.from("chat_messages")
+      .select("id,room_id,sender_id,nickname,body,attachment_path,file_name,file_type,file_size,created_at")
+      .eq("room_id", rooms[nextRoom].id).order("created_at", { ascending: false }).limit(70);
     if (request !== state.switching) return;
     if (result.error) { toast("Не удалось загрузить переписку: проверьте SQL и RLS"); console.warn(result.error); state.messages = []; }
-    else state.messages = result.data.reverse();
+    else state.messages = await Promise.all(result.data.reverse().map(signAttachment));
+    if (request !== state.switching) return;
     render();
     const channel = state.client.channel("openchat-" + nextRoom, { config: { presence: { key: state.userId } } });
-    channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages", filter: "room=eq." + nextRoom }, (payload) => {
+    channel.on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "chat_messages",
+      filter: "room_id=eq." + rooms[nextRoom].id
+    }, async (payload) => {
       if (state.room !== nextRoom || state.messages.some((m) => m.id === payload.new.id)) return;
-      state.messages.push(payload.new);
+      const message = await signAttachment(payload.new);
+      if (state.room !== nextRoom || state.messages.some((m) => m.id === message.id)) return;
+      state.messages.push(message);
       state.messages = state.messages.slice(-100);
       render();
     });
@@ -214,8 +238,8 @@
   }
   function validateFile(file) {
     if (!file) return false;
-    if (file.size > maxBytes) { toast("Файл больше 8 МБ"); return false; }
-    if (!allowed.has(file.type)) { toast("Разрешены JPG, PNG, WEBP, GIF, PDF и TXT"); return false; }
+    if (!file.size || file.size > maxBytes) { toast("Размер файла: от 1 байта до 8 МБ"); return false; }
+    if (!allowed.has(file.type)) { toast("Разрешены JPG, PNG, WEBP и PDF"); return false; }
     return true;
   }
   function chooseFile(file) {
@@ -228,8 +252,9 @@
   function resetFile() {
     state.selectedFile = null; el.file.value = ""; hide("attachment-preview");
   }
-  function safeFilename(name) {
-    return (name || "file").normalize("NFKC").replace(/[^a-z0-9._-]/gi, "_").slice(-90) || "file";
+  function extensionFromMime(type) {
+    return ({ "image/jpeg": "jpg", "image/png": "png",
+      "image/webp": "webp", "application/pdf": "pdf" })[type];
   }
   async function sendMessage(event) {
     if (event) event.preventDefault();
@@ -237,6 +262,7 @@
     const body = el.input.value.trim();
     const file = state.selectedFile;
     if (!body && !file) return;
+    if (isConfigured && !state.live) return toast("Нет связи с Supabase. Повторите после подключения.");
     if (!state.userId) return toast("Подключение ещё не завершено");
     const destination = state.room;
     state.sending = true; el.send.disabled = true;
@@ -244,19 +270,21 @@
     try {
       if (state.live) {
         if (file) {
-          path = state.userId + "/" + crypto.randomUUID() + "-" + safeFilename(file.name);
+          path = rooms[destination].id + "/" + state.userId + "/" + crypto.randomUUID()
+            + "." + extensionFromMime(file.type);
           const uploaded = await state.client.storage.from(cfg.storageBucket || "chat-uploads")
             .upload(path, file, { contentType: file.type, upsert: false, cacheControl: "3600" });
           if (uploaded.error) throw uploaded.error;
         }
         const inserted = await state.client.from("chat_messages").insert({
-          room: destination, sender_id: state.userId, nickname: state.nickname,
-          body, file_path: path, file_name: file ? file.name.slice(0, 180) : null,
+          room_id: rooms[destination].id, nickname: state.nickname,
+          body, attachment_path: path, file_name: file ? file.name.slice(0, 180) : null,
           file_type: file ? file.type : null, file_size: file ? file.size : null
-        }).select("id,room,sender_id,nickname,body,file_path,file_name,file_type,file_size,created_at").single();
+        }).select("id,room_id,sender_id,nickname,body,attachment_path,file_name,file_type,file_size,created_at").single();
         if (inserted.error) throw inserted.error;
         if (state.room === destination && !state.messages.some((m) => m.id === inserted.data.id)) {
-          state.messages.push(inserted.data); state.messages = state.messages.slice(-100); render();
+          state.messages.push(await signAttachment(inserted.data));
+          state.messages = state.messages.slice(-100); render();
         }
       } else {
         const row = {
