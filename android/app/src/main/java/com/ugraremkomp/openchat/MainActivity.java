@@ -28,6 +28,8 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebResourceResponse;
+import androidx.webkit.WebViewAssetLoader;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -41,14 +43,19 @@ import android.widget.Toast;
  * Private cross-messenger inboxes are intentionally NOT implemented here.
  */
 public final class MainActivity extends Activity {
+    // The UI is packaged in the APK: the first screen does not depend on GitHub Pages.
+    // Only the cloud messaging service requires internet access.
     private static final String HOME_URL =
+            "https://appassets.androidplatform.net/assets/chat/index.html";
+    private static final String TRUSTED_HOST = "appassets.androidplatform.net";
+    private static final String TRUSTED_PATH = "/assets/chat/";
+    private static final String PUBLIC_CHAT_URL =
             "https://alexanderkadukov-sys.github.io/file-search2/chat/";
-    private static final String TRUSTED_HOST = "alexanderkadukov-sys.github.io";
-    private static final String TRUSTED_PATH = "/file-search2/chat";
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int NAVY = Color.rgb(23, 33, 43);
 
     private WebView webView;
+    private WebViewAssetLoader assetLoader;
     private ProgressBar progress;
     private LinearLayout errorView;
     private ValueCallback<Uri[]> pendingFileCallback;
@@ -90,6 +97,9 @@ public final class MainActivity extends Activity {
     }
 
     private void setupWebView() {
+        assetLoader = new WebViewAssetLoader.Builder()
+                .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+                .build();
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true); // Required by the existing Supabase frontend.
         settings.setDomStorageEnabled(true); // Preserve nickname and dark/light theme.
@@ -104,6 +114,12 @@ public final class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
 
         webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(
+                    WebView view, WebResourceRequest request) {
+                return assetLoader.shouldInterceptRequest(request.getUrl());
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (!request.isForMainFrame()) return false;
@@ -128,7 +144,8 @@ public final class MainActivity extends Activity {
             public void onReceivedError(
                     WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) {
-                    showLoadError("Не удаётся открыть OpenChat. Проверьте интернет.");
+                    showLoadError("Не удалось открыть встроенный интерфейс OpenChat. "
+                            + "Проверьте обновление приложения.");
                 }
             }
 
@@ -215,8 +232,7 @@ public final class MainActivity extends Activity {
         if (!"https".equalsIgnoreCase(uri.getScheme())) return false;
         if (!TRUSTED_HOST.equalsIgnoreCase(uri.getHost())) return false;
         String path = uri.getPath();
-        return path != null && (path.equals(TRUSTED_PATH)
-                || path.startsWith(TRUSTED_PATH + "/"));
+        return path != null && path.startsWith(TRUSTED_PATH);
     }
 
     private void openExternal(Uri uri) {
@@ -305,7 +321,7 @@ public final class MainActivity extends Activity {
         layout.setPadding(dp(24), dp(24), dp(24), dp(24));
 
         TextView title = new TextView(this);
-        title.setText("Нет соединения");
+        title.setText("Не удалось открыть OpenChat");
         title.setTextSize(22);
         title.setTextColor(Color.WHITE);
         title.setGravity(Gravity.CENTER);
@@ -313,7 +329,7 @@ public final class MainActivity extends Activity {
 
         TextView message = new TextView(this);
         message.setId(android.R.id.message);
-        message.setText("Проверьте подключение к интернету.");
+        message.setText("Попробуйте ещё раз. Если ошибка повторяется, обновите приложение.");
         message.setGravity(Gravity.CENTER);
         message.setTextColor(Color.rgb(178, 193, 208));
         LinearLayout.LayoutParams messageParams = new LinearLayout.LayoutParams(
