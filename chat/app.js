@@ -80,14 +80,21 @@
     el.empty.hidden = list.length > 0;
     const welcome = $("welcome-card");
     if (welcome) welcome.hidden = !(state.messages.length === 0 || (!state.live && state.messages.length === 1));
+    let previous = null;
     for (const m of list) {
       const mine = Boolean(state.userId && m.sender_id === state.userId);
+      const compact = Boolean(previous && previous.sender_id === m.sender_id &&
+        Math.abs(new Date(m.created_at).getTime() - new Date(previous.created_at).getTime()) < 5 * 60 * 1000);
       const row = document.createElement("article");
-      row.className = "message-row" + (mine ? " mine" : "");
-      row.appendChild(avatar(m.nickname, mine));
+      row.className = "message-row" + (mine ? " mine" : "") + (compact ? " compact" : "");
+      if (!mine) row.appendChild(avatar(m.nickname, mine));
       const content = document.createElement("div"); content.className = "bubble-content";
-      const name = document.createElement("div"); name.className = "sender"; name.textContent = m.nickname || "Гость"; content.appendChild(name);
       const bubble = document.createElement("div"); bubble.className = "bubble";
+      if (!mine && !compact) {
+        const name = document.createElement("div");
+        name.className = "sender"; name.textContent = m.nickname || "Гость";
+        bubble.appendChild(name);
+      }
       if (m.attachment_path && m.signed_url && state.live) {
         attachMedia(bubble, m.signed_url, m.file_type, m.file_name, m.file_size);
       } else if (m.demo_attachment && m.demo_attachment.url) {
@@ -105,6 +112,7 @@
         footer.appendChild(copy);
       }
       bubble.appendChild(footer); content.appendChild(bubble); row.appendChild(content); el.messages.appendChild(row);
+      previous = m;
     }
     if (!query) scrollBottom();
   }
@@ -129,7 +137,37 @@
     el.name.textContent = state.nickname || "Гость";
     el.myAvatar.textContent = avatarLetter(state.nickname);
   }
+  const mobileLayout = () => window.matchMedia(
+    "(max-width:800px), (pointer:coarse) and (max-width:1024px)").matches;
+  function mobileScreen(screen) {
+    if (!mobileLayout()) return;
+    document.querySelector(".app").classList.toggle("mobile-list", screen === "list");
+    $("sidebar").classList.remove("open");
+    $("scrim").hidden = true;
+    if (screen === "chat") scrollBottom();
+  }
+  function openRoom(roomKey) {
+    if (mobileLayout()) {
+      if (!history.state || history.state.openchatView !== "chat") {
+        history.pushState({ openchatView: "chat", room: roomKey }, "", "#" + roomKey);
+      } else {
+        history.replaceState({ openchatView: "chat", room: roomKey }, "", "#" + roomKey);
+      }
+      mobileScreen("chat");
+    }
+    return switchRoom(roomKey);
+  }
+  function backToChats() {
+    if (!mobileLayout()) return drawer(true);
+    if (history.state && history.state.openchatView === "chat") history.back();
+    else mobileScreen("list");
+  }
   function drawer(open) {
+    if (mobileLayout()) {
+      if (open) mobileScreen("list");
+      else { $("sidebar").classList.remove("open"); $("scrim").hidden = true; }
+      return;
+    }
     $("sidebar").classList.toggle("open", open);
     $("scrim").hidden = !open;
   }
@@ -153,7 +191,11 @@
     const line = (message.body || "").trim().replace(/\s+/g, " ");
     preview.textContent = line.slice(0, 90) ||
       (message.file_type && message.file_type.startsWith("image/") ? "📷 Фотография" : "📎 Вложение");
-    if (message.created_at) button.title = rooms[roomKey].title + " · " + time(message.created_at);
+    if (message.created_at) {
+      button.title = rooms[roomKey].title + " · " + time(message.created_at);
+      const label = document.querySelector('[data-room-time="' + roomKey + '"]');
+      if (label) label.textContent = time(message.created_at);
+    }
   }
   async function loadRoomPreviews() {
     if (!state.live || !state.client) return;
@@ -392,6 +434,12 @@
       button.setAttribute("aria-label", dark ? "Включить светлую тему" : "Включить тёмную тему");
       button.title = dark ? "Светлая тема" : "Тёмная тема";
     }
+    const sideTheme = $("theme-side");
+    if (sideTheme) {
+      sideTheme.textContent = dark ? "☀" : "☾";
+      sideTheme.setAttribute("aria-label", dark ? "Включить светлую тему" : "Включить тёмную тему");
+      sideTheme.title = dark ? "Светлая тема" : "Тёмная тема";
+    }
     try { localStorage.setItem("openchat-theme", dark ? "dark" : "light"); } catch (_) {}
   }
   async function shareChat() {
@@ -410,7 +458,9 @@
   }
   function bindEvents() {
     ["invite-top", "invite-side", "invite-welcome"].forEach((id) => $(id).addEventListener("click", shareChat));
-    $("theme-toggle").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+    const switchTheme = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+    $("theme-toggle").addEventListener("click", switchTheme);
+    $("theme-side").addEventListener("click", switchTheme);
     $("members-toggle").addEventListener("click", () => {
       const collapsed = document.querySelector(".main").classList.toggle("members-collapsed");
       $("members-toggle").setAttribute("aria-expanded", String(!collapsed));
@@ -423,10 +473,19 @@
         button.hidden = !button.textContent.toLocaleLowerCase("ru").includes(query);
       });
     });
-    $("open-menu").addEventListener("click", () => drawer(true));
+    $("open-menu").addEventListener("click", backToChats);
     $("close-menu").addEventListener("click", () => drawer(false));
     $("scrim").addEventListener("click", () => drawer(false));
-    document.querySelectorAll("[data-room]").forEach((btn) => btn.addEventListener("click", () => switchRoom(btn.dataset.room)));
+    document.querySelectorAll("[data-room]").forEach((btn) => btn.addEventListener("click", () => openRoom(btn.dataset.room)));
+    window.addEventListener("popstate", (event) => {
+      if (!mobileLayout()) return;
+      if (event.state && event.state.openchatView === "chat" && rooms[event.state.room]) {
+        mobileScreen("chat");
+        switchRoom(event.state.room).catch((err) => console.warn("OpenChat navigation:", err));
+      } else {
+        mobileScreen("list");
+      }
+    });
     $("edit-name").addEventListener("click", () => { el.nameInput.value = state.nickname; show("name-modal"); el.nameInput.focus(); drawer(false); });
     $("name-form").addEventListener("submit", async (event) => {
       event.preventDefault(); const name = el.nameInput.value.trim().replace(/\s+/g, " ");
@@ -437,6 +496,7 @@
       el.input.focus();
     });
     $("info-toggle").addEventListener("click", () => show("info-modal"));
+    $("info-side").addEventListener("click", () => show("info-modal"));
     $("info-close").addEventListener("click", closeInfo);
     $("info-ok").addEventListener("click", closeInfo);
     $("info-modal").addEventListener("click", (e) => { if (e.target.id === "info-modal") closeInfo(); });
@@ -469,6 +529,10 @@
     });
   }
   async function start() {
+    if (mobileLayout()) {
+      history.replaceState({ openchatView: "list" }, "", location.pathname + location.search);
+      mobileScreen("list");
+    }
     bindEvents(); updateNickname();
     let preferred = "light";
     try {

@@ -1,0 +1,263 @@
+/*
+ * OpenChat V6 — Telegram-like two-screen mobile experience.
+ * Last stylesheet: overrides historical theme layers without altering Supabase.
+ */
+:root{--oc-tg-blue:#3390ec;--oc-tg-separator:#e8edf0}
+html,body{overflow-x:hidden}
+.chats-heading{display:none}
+.theme-side,.side-info{display:none}
+.room-time{
+  flex:0 0 auto;align-self:flex-start;margin:3px 0 0 auto;
+  font-size:10px;color:#94a6b4;font-weight:400;font-variant-numeric:tabular-nums;
+}
+.room.active .room-time{color:#6599c5}
+.room>span:nth-child(2){flex:1 1 auto;min-width:0}
+.sidebar .room{position:relative}
+.message-stack{width:100%;min-width:0}
+.messages{gap:7px}
+.message-row,.message-row.mine{max-width:min(84%,540px)}
+.message-row.mine{flex-direction:row-reverse}
+.message-row.mine>.avatar{display:none}
+.message-row.compact{margin-top:-4px}
+.message-row.compact .avatar{visibility:hidden}
+.message-row.compact .bubble{border-radius:10px!important}
+.message-row{align-items:flex-end}
+.message-row .avatar{border-radius:50%!important}
+.message-row .bubble-content{flex:0 1 auto;min-width:0;max-width:100%}
+.bubble,.message-row:not(.mine) .bubble,.mine .bubble{
+  min-width:42px!important;
+  width:fit-content;max-width:100%;
+  padding:7px 10px 6px!important;
+  border-radius:12px 12px 12px 4px!important;
+}
+.mine .bubble{border-radius:12px 12px 4px 12px!important}
+.bubble>.sender{display:block;padding:0 0 3px!important;font-size:12px!important;line-height:1.35;color:#3088d3!important;text-align:left!important}
+.body-text,.mine .body-text{font-size:14px!important;line-height:1.39!important;letter-spacing:0;white-space:pre-wrap}
+.bubble-footer,.mine .bubble-footer{
+  display:flex;align-items:center;justify-content:flex-end;
+  margin-top:2px!important;gap:6px;font-size:10px!important;
+  font-variant-numeric:tabular-nums;line-height:1.2!important;
+}
+.bubble-footer button{font-size:13px;padding:0 2px;opacity:.42}
+.bubble-footer button:hover,.bubble-footer button:focus-visible{opacity:1}
+.message-row.compact .bubble>.sender{display:none}
+.image-attachment{max-width:100%;margin:0 0 3px;border-radius:8px}
+.file-attachment{max-width:100%;min-width:0}
+.conversation-workspace>.message-scroll{
+  background-image:url("./telegram-pattern.svg")!important;
+  background-repeat:repeat!important;
+  background-size:192px 192px!important;
+  background-color:#dce7e4!important;
+}
+html[data-theme="dark"] .conversation-workspace>.message-scroll{
+  background-image:
+    linear-gradient(rgba(15,28,37,.82),rgba(15,28,37,.82)),
+    url("./telegram-pattern.svg")!important;
+  background-repeat:repeat,repeat!important;
+  background-size:auto,192px 192px!important;
+  background-color:#132630!important;
+}
+html[data-theme="dark"] .bubble>.sender{color:#78bdfa!important}
+html[data-theme="dark"] .mine .bubble{background:#2d5b49!important}
+html[data-theme="dark"] .mine .body-text{color:#e4f1e9!important}
+html[data-theme="dark"] .message-row:not(.mine) .bubble{background:#202f3b!important}
+html[data-theme="dark"] .message-row:not(.mine) .body-text{color:#e4edf4!important}
+html[data-theme="dark"] .room-time{color:#7993a6}
+html[data-theme="dark"] .room.active .room-time{color:#acd2e9}
+
+/* Input with separate round send button, on desktop and mobile. */
+.composer,.composer:focus-within,
+html[data-theme="dark"] .composer,html[data-theme="dark"] .composer:focus-within{
+  display:flex;align-items:flex-end;gap:8px;
+  border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:none!important;
+  padding:0!important;min-width:0;
+}
+.compose-pill{
+  display:flex;align-items:flex-end;flex:1 1 0;
+  width:100%;min-width:0;min-height:47px;
+  padding:3px 5px 3px 7px;
+  background:#fff;border-radius:24px;
+  border:1px solid #dee6eb;box-shadow:0 1px 5px rgba(20,36,47,.12);
+  transition:border-color .16s;
+}
+.compose-pill:focus-within{border-color:#7fbee9}
+.composer textarea{
+  flex:1 1 0;min-width:0;min-height:36px;
+  max-height:130px;padding:9px 5px 6px!important;
+  font-size:16px!important;line-height:1.4!important;
+  outline:none!important;background:transparent!important;border:0!important;
+}
+.composer .attach-button,.composer .emoji-button{
+  flex:0 0 34px;width:34px;min-width:34px;height:39px;
+  display:grid;place-items:center;font-size:23px;
+}
+.composer .send-button{
+  flex:0 0 46px;width:46px;min-width:46px;height:46px;
+  display:grid;place-items:center;align-self:flex-end;
+  border-radius:50%!important;
+  box-shadow:0 2px 7px rgba(25,85,134,.24)!important;
+}
+html[data-theme="dark"] .compose-pill{
+  background:#223544;border-color:#2b4757;box-shadow:0 1px 6px #0003;
+}
+html[data-theme="dark"] .compose-pill:focus-within{border-color:#4486bd}
+
+/* Desktop: no misplaced author labels; comfortable chat margins. */
+@media(min-width:1025px){
+ .messages{gap:7px}
+ .message-stack{max-width:890px}
+ .composer-area{padding:12px 25px 16px}
+ .room-time{margin-top:4px}
+}
+
+/* Smartphones use the same list/chat navigation as a native messenger. */
+@media screen and (max-width:800px),
+       screen and (pointer:coarse) and (max-width:1024px){
+ html,body,.app{width:100%!important;max-width:100%!important;min-width:0!important}
+ .app{position:relative;height:100vh;height:100dvh;overflow:hidden}
+ .app>.sidebar{
+   position:fixed!important;inset:0 auto 0 0!important;
+   width:100vw!important;min-width:0!important;max-width:100vw!important;
+   height:100vh!important;height:100dvh!important;
+   z-index:8!important;transform:translateX(-105%)!important;
+   transition:transform .18s ease;
+   padding:15px 11px max(12px,env(safe-area-inset-bottom))!important;
+   border:0!important;box-shadow:none!important;
+   overflow-x:hidden!important;overflow-y:auto!important;
+ }
+ .app.mobile-list>.sidebar{transform:translateX(0)!important}
+ .app.mobile-list>.main{display:none!important}
+ .app:not(.mobile-list)>.main{
+   display:flex!important;flex-direction:column!important;
+   width:100%;height:100%;min-width:0;min-height:0;
+ }
+ .app .scrim{display:none!important}
+ .sidebar .brand{
+   width:100%;min-height:47px;display:flex;align-items:center;
+   gap:12px;margin:0 0 7px;padding:0 8px;
+ }
+ .sidebar .brand strong{font-size:22px!important;letter-spacing:-.05em}
+ .sidebar .brand .logo{flex:0 0 37px;width:37px;height:37px}
+ #close-menu{display:none!important}
+ .theme-side{
+   display:grid!important;place-items:center;
+   margin-left:auto;width:39px!important;height:39px!important;
+   border-radius:50%;color:#6e8499!important;
+   background:transparent!important;border:0!important;box-shadow:none!important;
+   font-size:21px;
+ }
+ .sidebar-search{margin:7px 3px 14px}
+ .sidebar-search input{font-size:16px}
+ .chats-heading{
+   display:block;margin:1px 13px 7px;font-size:21px;line-height:1.35;
+   font-weight:750;color:#1d2b39;letter-spacing:-.04em;
+ }
+ .nav-label{display:none}
+ #rooms{gap:0}
+ #rooms .room{
+   min-height:76px;border-radius:0!important;
+   border-bottom:1px solid #eff2f5!important;
+   padding:11px 10px!important;gap:11px!important;
+ }
+ #rooms .room:last-child{border-bottom:0!important}
+ #rooms .room-icon{flex:0 0 53px;width:53px;height:53px;border-radius:50%;font-size:24px}
+ #rooms .room b{font-size:15px}
+ #rooms .room small{font-size:13px;line-height:1.35}
+ .room-time{font-size:11px}
+ .side-actions{display:flex;flex-direction:column;gap:7px;margin:15px 4px 0}
+ .side-info{
+   display:flex;align-items:center;gap:13px;min-height:42px;
+   border:0;background:transparent;font-size:13px;color:#677d8f;
+   text-align:left;padding:0 11px;
+ }
+ .side-info:hover{background:#edf5fa}
+ .side-footer{margin-top:auto}
+ .profile{min-height:63px}
+ .topbar{
+   min-height:59px!important;max-height:65px;padding:6px 8px!important;
+   gap:8px!important;flex:0 0 auto;
+ }
+ #open-menu{
+   display:grid!important;place-items:center;flex:0 0 39px;
+   width:39px;min-width:39px;height:42px;border:0!important;
+   background:transparent!important;color:#7793a7!important;
+   border-radius:50%;font-size:30px;line-height:1;
+ }
+ #open-menu:hover{background:#eaf3fb!important}
+ .top-icon{display:grid!important;flex:0 0 40px!important;width:40px!important;height:40px!important;font-size:21px!important}
+ .top-text{flex:1 1 0;min-width:0}
+ .top-text h1{font-size:15px!important;line-height:1.2!important}
+ .top-text p{font-size:11px!important}
+ .top-actions{display:flex;gap:0!important;flex:0 0 auto}
+ #invite-top,#theme-toggle,#members-toggle{display:none!important}
+ #info-toggle,#search-toggle{
+   display:grid!important;place-items:center;
+   flex:0 0 36px!important;min-width:36px!important;
+   width:36px!important;height:40px!important;
+   font-size:23px!important;
+ }
+ .mobile-room-tabs{display:none!important}
+ .conversation-workspace{flex:1 1 0!important;min-height:0!important;min-width:0}
+ .conversation-workspace>.message-scroll{
+   display:block!important;flex:1 1 0!important;min-height:0!important;
+   width:100%!important;min-width:0!important;overflow:auto!important;
+ }
+ .message-stack{
+   width:100%;max-width:100%;min-height:100%;
+   padding:10px 7px 16px!important;
+ }
+ .messages{gap:6px!important}
+ .message-row,.message-row.mine{
+   max-width:88%!important;min-width:0;gap:5px!important;
+   margin-block:0!important;
+ }
+ .message-row.compact{margin-top:-3px!important}
+ .message-row .avatar{
+   flex:0 0 27px!important;width:27px!important;height:27px!important;
+   border-radius:50%!important;font-size:11px;
+ }
+ .bubble-content{min-width:0;max-width:100%!important}
+ .bubble,.message-row:not(.mine) .bubble,.mine .bubble{
+   padding:7px 9px 5px!important;min-width:38px!important;
+   max-width:100%!important;
+ }
+ .body-text,.mine .body-text{font-size:14px!important;line-height:1.42!important}
+ .sender,.bubble>.sender{font-size:11.5px!important;padding-bottom:2px!important}
+ .bubble-footer{margin-top:1px!important;font-size:10px!important}
+ .date-pill{margin:5px auto 13px!important}
+ .welcome-card{padding:15px;margin:5px 0 15px!important}
+ .composer-area{
+   position:relative!important;flex:0 0 auto!important;width:100%!important;
+   padding:7px 8px calc(8px + env(safe-area-inset-bottom,0px))!important;
+   margin:0!important;
+ }
+ .composer{display:flex!important;gap:7px!important;min-width:0!important}
+ .compose-pill{min-height:44px;padding:1px 4px 1px 5px;border-radius:24px}
+ .composer textarea{min-width:0!important;min-height:36px;font-size:16px!important}
+ .composer .attach-button,.composer .emoji-button{
+   width:33px!important;flex:0 0 33px!important;min-width:33px!important;height:38px!important;
+ }
+ .composer .send-button{
+   flex:0 0 44px!important;width:44px!important;min-width:44px!important;height:44px!important;
+ }
+ .hint{display:none!important}
+ .toast{bottom:calc(72px + env(safe-area-inset-bottom))!important}
+ html[data-theme="dark"] .chats-heading{color:#e9f3f8}
+ html[data-theme="dark"] #rooms .room{border-bottom-color:#2c3d4a!important}
+ html[data-theme="dark"] .side-info{color:#a2bccd}
+ html[data-theme="dark"] .side-info:hover{background:#263c4e}
+ html[data-theme="dark"] #open-menu{color:#9cb5c5!important}
+}
+@media screen and (max-width:360px){
+ .top-icon{flex:0 0 36px!important;width:36px!important;height:36px!important}
+ .topbar{gap:4px!important;padding-inline:5px!important}
+ #open-menu{flex-basis:34px!important;min-width:34px!important;width:34px!important}
+ .top-actions #search-toggle,.top-actions #info-toggle{flex-basis:33px!important;min-width:33px!important;width:33px!important}
+ .message-stack{padding-inline:5px!important}
+ .message-row,.message-row.mine{max-width:91%!important}
+ .composer-area{padding-inline:5px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ .app>.sidebar{transition:none!important}
+}
