@@ -78,6 +78,8 @@
     const list = query ? state.messages.filter((m) => (m.body + " " + m.nickname + " " + (m.file_name || "")).toLocaleLowerCase("ru").includes(query)) : state.messages;
     el.messages.replaceChildren();
     el.empty.hidden = list.length > 0;
+    const welcome = $("welcome-card");
+    if (welcome) welcome.hidden = !(state.messages.length === 0 || (!state.live && state.messages.length === 1));
     for (const m of list) {
       const mine = Boolean(state.userId && m.sender_id === state.userId);
       const row = document.createElement("article");
@@ -283,7 +285,35 @@
     el.input.style.height = Math.min(el.input.scrollHeight, 138) + "px";
   }
   function closeInfo() { hide("info-modal"); }
+  function setTheme(mode) {
+    const dark = mode === "dark";
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    const button = $("theme-toggle");
+    if (button) {
+      const icon = button.querySelector(".theme-icon");
+      if (icon) icon.textContent = dark ? "☀" : "☾";
+      button.setAttribute("aria-label", dark ? "Включить светлую тему" : "Включить тёмную тему");
+      button.title = dark ? "Светлая тема" : "Тёмная тема";
+    }
+    try { localStorage.setItem("openchat-theme", dark ? "dark" : "light"); } catch (_) {}
+  }
+  async function shareChat() {
+    const url = window.location.origin + window.location.pathname;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "OpenChat", text: "Заходи в наш открытый чат — регистрация не нужна!", url });
+        return;
+      } catch (err) { if (err && err.name === "AbortError") return; }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try { await navigator.clipboard.writeText(url); toast("Ссылка на чат скопирована"); return; }
+      catch (_) {}
+    }
+    toast("Адрес чата: " + url);
+  }
   function bindEvents() {
+    ["invite-top", "invite-side", "invite-welcome"].forEach((id) => $(id).addEventListener("click", shareChat));
+    $("theme-toggle").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
     $("open-menu").addEventListener("click", () => drawer(true));
     $("close-menu").addEventListener("click", () => drawer(false));
     $("scrim").addEventListener("click", () => drawer(false));
@@ -331,6 +361,12 @@
   }
   async function start() {
     bindEvents(); updateNickname();
+    let preferred = "light";
+    try {
+      const saved = localStorage.getItem("openchat-theme");
+      preferred = saved === "dark" || (!saved && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+    } catch (_) {}
+    setTheme(preferred);
     if (!state.nickname) { show("name-modal"); el.nameInput.focus(); }
     await connect();
     await switchRoom("general");
