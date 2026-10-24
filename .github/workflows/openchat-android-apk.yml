@@ -36,15 +36,17 @@ jobs:
 
       # ubuntu-latest already has Android SDK and sdkmanager. Avoid
       # setup-android@v3 on 2026 runners: it attempts obsolete 'tools' package.
-      - name: Verify Android SDK
+      - name: Locate Android SDK manager
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
-          command -v sdkmanager
-          sdkmanager --version
+          SDK_MANAGER="$(find "$ANDROID_HOME/cmdline-tools" -maxdepth 3 -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDK_MANAGER"
+          "$SDK_MANAGER" --version
+          echo "SDK_MANAGER=$SDK_MANAGER" >> "$GITHUB_ENV"
 
       - name: Install SDK platform
         run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          "$SDK_MANAGER" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build installable debug APK
         run: gradle -p android :app:assembleDebug --no-daemon --stacktrace
