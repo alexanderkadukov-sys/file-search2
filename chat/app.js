@@ -143,6 +143,43 @@
     }
     return { ...message, signed_url: result.data.signedUrl };
   }
+  // Presence is scoped to the current room; never invent member counts.
+  function renderMembers(groups) {
+    const list = $("members-list");
+    if (!list) return;
+    const entries = Object.entries(groups || {}).map(([userId, states]) => ({
+      userId,
+      nickname: ((Array.isArray(states) && states[0] && states[0].nickname) || "Гость")
+        .toString().slice(0, 24)
+    })).sort((a, b) => (a.userId === state.userId ? -1 : b.userId === state.userId ? 1 :
+      a.nickname.localeCompare(b.nickname, "ru")));
+    $("members-count").textContent = String(entries.length);
+    $("members-online-count").textContent = String(entries.length);
+    list.replaceChildren();
+    if (!entries.length) {
+      const placeholder = document.createElement("p");
+      placeholder.className = "members-empty";
+      placeholder.textContent = state.live ? "Пока никого нет в комнате." : "Подключение к комнате недоступно.";
+      list.appendChild(placeholder);
+      return;
+    }
+    for (const person of entries.slice(0, 70)) {
+      const item = document.createElement("div");
+      item.className = "member-item";
+      const picture = document.createElement("span");
+      picture.className = "member-avatar";
+      picture.textContent = avatarLetter(person.nickname);
+      const info = document.createElement("div");
+      info.className = "member-info";
+      const name = document.createElement("strong");
+      name.textContent = person.nickname;
+      const status = document.createElement("small");
+      status.textContent = person.userId === state.userId ? "Вы · в сети" : "В сети";
+      info.append(name, status);
+      item.append(picture, info);
+      list.appendChild(item);
+    }
+  }
   async function connect() {
     if (!isConfigured || !window.supabase) {
       show("demo-banner");
@@ -189,7 +226,12 @@
     $("room-title").textContent = rooms[nextRoom].title;
     $("top-icon").textContent = rooms[nextRoom].icon;
     $("top-icon").style.background = nextRoom === "photos" ? "#ffedf5" : nextRoom === "files" ? "#eaf4ff" : "#f0efff";
-    document.querySelectorAll("[data-room]").forEach((btn) => btn.classList.toggle("active", btn.dataset.room === nextRoom));
+    document.querySelectorAll("[data-room]").forEach((btn) => {
+      const isActive = btn.dataset.room === nextRoom;
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-current", isActive ? "page" : "false");
+    });
+    renderMembers({});
     const unread = document.querySelector('[data-unread="' + nextRoom + '"]');
     if (unread) unread.hidden = true;
     $("presence").textContent = state.live ? "Подключение..." : "Демонстрационный режим";
@@ -223,9 +265,11 @@
       render();
     });
     channel.on("presence", { event: "sync" }, () => {
+      if (state.room !== nextRoom || state.channel !== channel) return;
       const groups = channel.presenceState();
       const count = Object.keys(groups).length;
       $("presence").textContent = count ? count + " в сети" : "Открыто для всех";
+      renderMembers(groups);
     });
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
@@ -342,6 +386,12 @@
   function bindEvents() {
     ["invite-top", "invite-side", "invite-welcome"].forEach((id) => $(id).addEventListener("click", shareChat));
     $("theme-toggle").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+    $("members-toggle").addEventListener("click", () => {
+      const collapsed = $(".main").classList.toggle("members-collapsed");
+      $("members-toggle").setAttribute("aria-expanded", String(!collapsed));
+      $("members-toggle").setAttribute("aria-label",
+        collapsed ? "Показать участников комнаты" : "Скрыть участников комнаты");
+    });
     $("open-menu").addEventListener("click", () => drawer(true));
     $("close-menu").addEventListener("click", () => drawer(false));
     $("scrim").addEventListener("click", () => drawer(false));
@@ -392,7 +442,7 @@
     let preferred = "light";
     try {
       const saved = localStorage.getItem("openchat-theme");
-      preferred = saved === "dark" || (!saved && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+      preferred = saved === "light" ? "light" : "dark";
     } catch (_) {}
     setTheme(preferred);
     if (!state.nickname) { show("name-modal"); el.nameInput.focus(); }
