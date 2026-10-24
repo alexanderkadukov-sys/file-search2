@@ -1,182 +1,22 @@
 <!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Поиск файлов — УграРемКомп</title>
-<meta name="color-scheme" content="light dark">
-<style>
-:root{
-  --bg:#0b0c10;--card:#111317;--text:#e5e7eb;--muted:#9aa1aa;--line:#23262d;
-  --brand:#19c37d;--brand2:#14a169;
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif}
-a{color:#a7e6c6;text-decoration:underline}
-.container{max-width:1100px;margin:0 auto;padding:16px}
-.header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
-.h1{font-size:clamp(20px,3.6vw,28px);font-weight:700;margin:0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
-.controls{display:grid;grid-template-columns:1fr 150px 130px;gap:10px;padding:12px;border-bottom:1px solid var(--line)}
-@media (max-width:720px){.controls{grid-template-columns:1fr 1fr}}
-input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0e1116;color:var(--text)}
-input::placeholder{color:#808792}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;background:var(--brand);color:#07110a;
-     border:0;border-radius:12px;font-weight:600;cursor:pointer}
-.btn:active{transform:translateY(1px)}
-.table-wrap{overflow:auto}
-table{width:100%;border-collapse:separate;border-spacing:0}
-th,td{padding:12px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
-th{position:sticky;top:0;background:#14171d;z-index:1;text-align:left;font-weight:700}
-.meta{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:10px 12px;border-top:1px solid var(--line);flex-wrap:wrap}
-.meta small{color:var(--muted)}
-.pager{display:flex;gap:8px;align-items:center}
-.pager button{padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#0f1217;color:var(--text);cursor:pointer}
-.pager button[disabled]{opacity:.45;cursor:not-allowed}
-.badge{background:#0f1712;border:1px solid #1c2c22;padding:4px 8px;border-radius:999px;color:#a9d9bf}
-footer{color:var(--muted);text-align:center;margin:18px 0}
-.lock{position:fixed;inset:0;display:grid;place-items:center;background:#0c0e12}
-.lock .panel{width:min(520px,92vw);padding:22px;border:1px solid var(--line);border-radius:16px;background:#101319;
-             box-shadow:0 8px 28px rgba(0,0,0,.35)}
-.lock .panel h2{margin:0 0 8px;font-size:22px}
-.lock .row{display:flex;gap:8px;margin-top:12px}
-.lock input{flex:1}
-.lock .err{color:#ff8a8a;margin-top:10px;min-height:1.25em}
-.hidden{display:none!important}
-</style>
-</head>
-<body>
-
-<!-- Блок авторизации -->
-<div id="lock" class="lock">
-  <div class="panel">
-    <h2>Доступ по паролю</h2>
-    <p style="color:#9aa1aa;margin:0">Введите пароль, чтобы открыть поиск по базе.</p>
-    <div class="row">
-      <input id="pwd" type="password" placeholder="Пароль" autocomplete="current-password">
-      <button class="btn" id="go">Войти</button>
-    </div>
-    <div id="perr" class="err"></div>
-    <small style="color:#6f7782">Пароль проверяется локально (SHA-256), данные никуда не отправляются.</small>
-  </div>
-</div>
-
-<!-- Основное приложение -->
-<div id="app" class="container hidden">
-  <div class="header">
-    <h1 class="h1">Поиск по файлам</h1>
-    <span class="badge" id="badge">—</span>
-  </div>
-
-  <div class="card">
-    <div class="controls">
-      <input id="q" type="text" placeholder="Ищите по словам, ссылкам, номерам — поиск по всем колонкам">
-      <select id="per">
-        <option value="25">25 на странице</option>
-        <option value="50" selected>50 на странице</option>
-        <option value="100">100 на странице</option>
-      </select>
-      <button class="btn" id="clear">Очистить</button>
-    </div>
-
-    <div class="table-wrap">
-      <table id="tbl"><thead></thead><tbody></tbody></table>
-    </div>
-
-    <div class="meta">
-      <small id="pageInfo"></small>
-      <div class="pager">
-        <button id="prev">Назад</button>
-        <button id="next">Вперёд</button>
-      </div>
-    </div>
-  </div>
-
-  <footer>© УграРемКомп</footer>
-</div>
-
-<script>
-/* === НАСТРОЙКИ === */
-// ссылка на опубликованный CSV из Google Таблиц (формат /d/e/.../pub?gid=...&output=csv)
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR9L9aeACtJASDu24QmYMDUpEkWAFB5977LMJ_FBPuoARlo7I8S_z3x4fzQxW8t7_DF6E3aplRwkS7/pub?gid=0&single=true&output=csv";
-// SHA-256 пароля "a1980"
-const PASS_HASH_HEX = "ca4d4c3c5b0d70ba148f9774d92594c86954d2235545f73b6ae853608f5414f1";
-
-/* === УТИЛИТЫ === */
-const $ = s => document.querySelector(s);
-const norm = s => (s||"").toLowerCase().replace(/[ёЁ]/g,"е").trim();
-const toHex = b => [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
-function parseCSV(t){const r=[],a=/,(?=(?:(?:[^"]*"){2})*[^"]*$)/;t.split(/\r?\n/).forEach(l=>{if(!l.trim())return;r.push(l.split(a).map(v=>v.replace(/^"|"$/g,"")))});return r;}
-function guessCell(v){const s=(v||"").trim();if(/^https?:/i.test(s))return `<a href="${s}" target="_blank">${s}</a>`;return s;}
-
-/* === ПРОВЕРКА ПАРОЛЯ === */
-(async()=>{
-  if(sessionStorage.getItem("ok")==="1"){unlock();return;}
-  $("#go").onclick=check;
-  $("#pwd").onkeydown=e=>{if(e.key==="Enter")check();}
-  async function check(){
-    $("#perr").textContent="";
-    const txt=$("#pwd").value;
-    const buf=new TextEncoder().encode(txt);
-    const hash=await crypto.subtle.digest("SHA-256",buf);
-    const hex=toHex(hash);
-    if(hex===PASS_HASH_HEX){sessionStorage.setItem("ok","1");unlock();}
-    else $("#perr").textContent="Неверный пароль";
-  }
-})();
-
-function unlock(){
-  $("#lock").classList.add("hidden");
-  $("#app").classList.remove("hidden");
-  init();
-}
-
-/* === ОСНОВНАЯ ЛОГИКА === */
-let HEAD=[],DATA=[],VIEW=[],page=1,per=50;
-function bindUI(){
-  $("#q").oninput=applyFilter;
-  $("#clear").onclick=()=>{$("#q").value="";applyFilter();}
-  $("#per").onchange=e=>{per=parseInt(e.target.value)||50;page=1;paint();}
-  $("#prev").onclick=()=>{if(page>1){page--;paint();}}
-  $("#next").onclick=()=>{if(page<Math.ceil(VIEW.length/per)){page++;paint();}}
-}
-
-async function init(){
-  bindUI();
-  $("#badge").textContent="Загрузка…";
-  try{
-    const url=CSV_URL+(CSV_URL.includes("?")?"&":"?")+"t="+Date.now();
-    const r=await fetch(url,{cache:"no-store"});
-    if(!r.ok)throw new Error("HTTP "+r.status);
-    const text=await r.text();
-    const rows=parseCSV(text);
-    HEAD=rows[0];DATA=rows.slice(1);
-    $("#tbl thead").innerHTML="<tr>"+HEAD.map(h=>`<th>${h}</th>`).join("")+"</tr>";
-    applyFilter();
-  }catch(e){
-    $("#badge").textContent="Ошибка загрузки CSV";
-    console.error(e);
-  }
-}
-
-function applyFilter(){
-  const q=norm($("#q").value);
-  VIEW=!q?DATA:DATA.filter(r=>r.some(c=>norm(c).includes(q)));
-  page=1;
-  paint();
-}
-
-function paint(){
-  const total=VIEW.length;
-  const pages=Math.max(1,Math.ceil(total/per));
-  const start=(page-1)*per;
-  const slice=VIEW.slice(start,start+per);
-  $("#tbl tbody").innerHTML=slice.map(r=>"<tr>"+r.map(c=>`<td>${guessCell(c)}</td>`).join("")+"</tr>").join("");
-  $("#pageInfo").textContent=`Найдено: ${total} / Всего: ${DATA.length} — стр. ${page}/${pages}`;
-  $("#badge").textContent=total?`Записей: ${total}`:"Ничего не найдено";
-  $("#prev").disabled=page<=1;
-  $("#next").disabled=page>=pages;
-}
-</script>
-</body>
-</html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101b32"><meta name="description" content="OpenChat — публичный чат без регистрации, с фото и файлами."><title>OpenChat — Общайся свободно</title><link rel="stylesheet" href="./style.css"></head>
+<body><div class="app">
+<aside class="sidebar" id="sidebar"><header class="brand"><span class="logo">✳</span><div><strong>OpenChat</strong><small>Открытое общение</small></div><button id="close-menu" class="menu-close icon-btn" aria-label="Закрыть меню">✕</button></header>
+<p class="nav-label">ПРОСТРАНСТВА</p><nav id="rooms" aria-label="Комнаты">
+<button class="room active" type="button" data-room="general"><span class="room-icon purple">#</span><span><b>Общий чат</b><small>Знакомства и разговоры</small></span><i class="unread" data-unread="general" hidden></i></button>
+<button class="room" type="button" data-room="photos"><span class="room-icon rose">◈</span><span><b>Фото</b><small>Делимся моментами</small></span><i class="unread" data-unread="photos" hidden></i></button>
+<button class="room" type="button" data-room="files"><span class="room-icon blue">▤</span><span><b>Файлы</b><small>Документы и тексты</small></span><i class="unread" data-unread="files" hidden></i></button>
+</nav><div class="side-footer"><div class="tip"><span>✦</span><p><b>Без регистрации.</b> Сообщения и файлы видны всем посетителям.</p></div><button id="edit-name" class="profile" type="button"><span id="my-avatar" class="avatar me">?</span><span><b id="my-name">Гость</b><small>Изменить имя</small></span><span class="gear">⚙</span></button></div></aside>
+<div class="scrim" id="scrim" hidden></div>
+<main class="main"><header class="topbar"><button class="icon-btn hamburger" id="open-menu" aria-label="Открыть меню" type="button">☰</button><span class="top-icon" id="top-icon">#</span><div class="top-text"><h1 id="room-title">Общий чат</h1><p><i class="status-dot"></i> <span id="presence">Свободное пространство</span></p></div><div class="top-actions"><button class="icon-btn" id="search-toggle" title="Поиск среди последних сообщений" type="button">⌕</button><button class="icon-btn" id="info-toggle" title="О чате" type="button">ⓘ</button></div></header>
+<div class="search-panel" id="search-panel" hidden><input id="search-input" type="search" placeholder="Поиск среди последних сообщений..."><button class="text-btn" id="search-close" type="button">Закрыть</button></div>
+<div class="demo-banner" id="demo-banner" hidden><b>Демо-режим</b> — сообщения видны только на этом устройстве. Подключите Supabase для общего чата.</div>
+<section class="message-scroll" id="message-scroll"><div class="message-stack"><div class="date-pill" id="date-pill">Сегодня</div><div id="messages" class="messages" role="log" aria-live="polite"></div><div class="empty" id="empty" hidden><span>✳</span><h2>Разговор начинается здесь</h2><p>Напишите первое сообщение или поделитесь фотографией.</p></div></div></section>
+<footer class="composer-area"><div class="toast" id="toast" role="status" hidden></div><div class="attachment-preview" id="attachment-preview" hidden><span>▤</span><div><b id="attachment-title"></b><small id="attachment-size"></small></div><button class="text-btn" id="attachment-remove" type="button" aria-label="Убрать вложение">✕</button></div>
+<form class="composer" id="compose-form"><input type="file" id="file-input" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/plain,.pdf,.txt" hidden><button id="attach-button" class="attach-button" type="button" aria-label="Добавить фото или файл">＋</button><textarea id="message-input" maxlength="3000" rows="1" placeholder="Ваше сообщение..." aria-label="Ваше сообщение"></textarea><button class="emoji-button" id="emoji-button" type="button" aria-label="Эмодзи">☺</button><button id="send-button" class="send-button" type="submit" aria-label="Отправить">➤</button></form>
+<div class="emoji-picker" id="emoji-picker" hidden><button>😀</button><button>😂</button><button>❤️</button><button>👍</button><button>🔥</button><button>👏</button><button>🎉</button><button>🙏</button><button>😍</button><button>😎</button><button>🤝</button><button>✨</button></div><p class="hint">Enter — отправить · Shift + Enter — перенос · Файлы до 8 МБ</p>
+</footer></main></div>
+<div class="overlay" id="name-modal" hidden><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="name-heading"><div class="dialog-logo">✳</div><h2 id="name-heading">Как вас называть?</h2><p>Регистрация не нужна. Просто выберите имя для общения.</p><form id="name-form"><label for="name-input">Ваше имя</label><input id="name-input" maxlength="24" minlength="2" required placeholder="Например, Алекс" autocomplete="nickname"><button class="primary" type="submit">Начать общение →</button></form><small>Не указывайте личные или конфиденциальные данные.</small></div></div>
+<div class="overlay" id="info-modal" hidden><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="info-heading"><button id="info-close" class="dialog-close" type="button">✕</button><div class="dialog-logo">ⓘ</div><h2 id="info-heading">Открытый чат</h2><p>Это публичное пространство, а не приватный мессенджер. Все сообщения и файлы доступны посетителям. Сквозного шифрования нет.</p><p>Не отправляйте пароли, документы с персональными данными и закрытую информацию.</p><button id="info-ok" class="primary" type="button">Понятно</button></div></div>
+<div id="lightbox" class="lightbox" hidden><button id="lightbox-close" aria-label="Закрыть фотографию" type="button">✕</button><img id="lightbox-image" alt="Фотография из сообщения"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script src="./config.js"></script><script src="./app.js" defer></script></body></html>
