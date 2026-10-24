@@ -34,11 +34,17 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
+      # ubuntu-latest already has Android SDK and sdkmanager. Avoid
+      # setup-android@v3 on 2026 runners: it attempts obsolete 'tools' package.
+      - name: Verify Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          command -v sdkmanager
+          sdkmanager --version
 
       - name: Install SDK platform
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build installable debug APK
         run: gradle -p android :app:assembleDebug --no-daemon --stacktrace
