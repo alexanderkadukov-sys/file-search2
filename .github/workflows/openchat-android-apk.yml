@@ -48,6 +48,22 @@ jobs:
         run: |
           "$SDK_MANAGER" "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Bundle OpenChat interface in APK
+        run: python3 android/prepare_web_assets.py
+
+      - name: Vendor Supabase JavaScript for reliable startup
+        run: |
+          set -euo pipefail
+          FILE="android/app/src/main/assets/chat/vendor/supabase.min.js"
+          mkdir -p "$(dirname "$FILE")"
+          if ! curl -fLsS --retry 3 --connect-timeout 15 --max-time 120 \
+              "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" -o "$FILE"; then
+            curl -fLsS --retry 3 --connect-timeout 15 --max-time 120 \
+              "https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js" -o "$FILE"
+          fi
+          test "$(wc -c < "$FILE")" -gt 50000
+          grep -qi supabase "$FILE"
+
       - name: Build installable debug APK
         run: gradle -p android :app:assembleDebug --no-daemon --stacktrace
 
@@ -55,14 +71,16 @@ jobs:
         run: |
           test -s android/app/build/outputs/apk/debug/app-debug.apk
           mkdir -p dist
-          cp android/app/build/outputs/apk/debug/app-debug.apk dist/OpenChat-v0.1.0-debug.apk
-          unzip -t dist/OpenChat-v0.1.0-debug.apk | tail -1
-          (cd dist && sha256sum OpenChat-v0.1.0-debug.apk > SHA256SUMS.txt)
+          cp android/app/build/outputs/apk/debug/app-debug.apk dist/OpenChat-v0.2.0-debug.apk
+          unzip -l dist/OpenChat-v0.2.0-debug.apk | grep -q 'assets/chat/index.html'
+          unzip -l dist/OpenChat-v0.2.0-debug.apk | grep -q 'assets/chat/vendor/supabase.min.js'
+          unzip -t dist/OpenChat-v0.2.0-debug.apk | tail -1
+          (cd dist && sha256sum OpenChat-v0.2.0-debug.apk > SHA256SUMS.txt)
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: OpenChat-v0.1.0-Android-APK
+          name: OpenChat-v0.2.0-Android-APK
           path: dist/*
           retention-days: 30
           if-no-files-found: error
