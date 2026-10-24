@@ -434,6 +434,12 @@
       button.setAttribute("aria-label", dark ? "Включить светлую тему" : "Включить тёмную тему");
       button.title = dark ? "Светлая тема" : "Тёмная тема";
     }
+    const sideTheme = $("theme-side");
+    if (sideTheme) {
+      sideTheme.textContent = dark ? "☀" : "☾";
+      sideTheme.setAttribute("aria-label", dark ? "Включить светлую тему" : "Включить тёмную тему");
+      sideTheme.title = dark ? "Светлая тема" : "Тёмная тема";
+    }
     try { localStorage.setItem("openchat-theme", dark ? "dark" : "light"); } catch (_) {}
   }
   async function shareChat() {
@@ -523,7 +529,10 @@
     });
   }
   async function start() {
-    if (mobileLayout()) mobileScreen("list");
+    if (mobileLayout()) {
+      history.replaceState({ openchatView: "list" }, "", location.pathname + location.search);
+      mobileScreen("list");
+    }
     bindEvents(); updateNickname();
     let preferred = "light";
     try {
