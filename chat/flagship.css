@@ -246,3 +246,6 @@ html[data-theme="dark"] .members-toggle {background:#292b49;border-color:#414467
 @media (prefers-reduced-motion: reduce) {
  .members-panel,.mobile-room-tabs button {transition:none!important}
 }
+
+/* Brand glyph follows the existing OpenChat favicon. */
+.logo svg {display:block;width:30px;height:30px;flex:none;position:relative;z-index:1}
