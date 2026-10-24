@@ -1,7 +1,6 @@
-// OpenChat — публичные параметры подключения. Не размещайте здесь service_role или secret key!
-// В Supabase: Project Settings → API / API Keys → URL и Publishable (anon) key.
+// OpenChat: public, browser-safe Supabase settings. No service_role/secret credentials.
 window.OPENCHAT_CONFIG = {
-  supabaseUrl: "",
-  supabaseAnonKey: "",
-  storageBucket: "chat-uploads"
+  supabaseUrl: "https://bdsynhrgqtdxvbexctzf.supabase.co",
+  supabaseAnonKey: "sb_publishable_zGoxb6ShymTel0sShs5SCg_ZSHwHMsL",
+  storageBucket: "chat-attachments"
 };
